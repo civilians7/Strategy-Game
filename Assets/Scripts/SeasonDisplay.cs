@@ -42,8 +42,14 @@ public class SeasonDisplay : MonoBehaviour {
         seasonText.text = currentSeason + " " + currentYear;
     }
 
-    public void SetText(string turn) {
-        text.text = turn;
+    public void Disable() {
+        text.color = new Color(text.color.r,text.color.g,text.color.b,0f);
+        enabled = false;
+    }
+
+    public void Enable() {
+        text.color = new Color(text.color.r,text.color.g,text.color.b,1f);
+        enabled = true;
     }
 
 }

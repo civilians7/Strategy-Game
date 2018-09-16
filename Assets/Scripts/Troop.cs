@@ -50,15 +50,26 @@ public class Troop : MonoBehaviour {
     private float newPosPoint; 
     private float transformPoint;
 
+
     private void OnDrawGizmos()
         {
             if (color == CellColor.White)
                 return;
 
             if (color == CellColor.Red)
-                Gizmos.color = UnityEngine.Color.red;
-            else
-                Gizmos.color = UnityEngine.Color.blue;
+                Gizmos.color = Color.red;
+            else if(color == CellColor.Blue)
+                Gizmos.color = Color.blue;
+            else if(color == CellColor.Purple)
+                Gizmos.color = Color.magenta;
+            else if(color == CellColor.Orange)
+                Gizmos.color = new Color(1f,0.456129f,0.07111073f);
+            else if(color == CellColor.Yellow)
+                Gizmos.color = Color.yellow;
+            else if(color == CellColor.Brown)
+                Gizmos.color = Color.grey;
+            else if(color == CellColor.Green)
+                Gizmos.color = Color.green;
 
             Gizmos.DrawWireSphere(transform.position, 0.433f);
         }
@@ -74,13 +85,21 @@ public class Troop : MonoBehaviour {
         hexCalculator = hexGrid.HexCalculator;
         actionPower = basePower;
 
-        if (color == CellColor.Blue) {
+        if (color == CellColor.Blue) 
             animator.SetInteger("Color", 1);
-            GetComponent<SpriteRenderer>().flipX = false;
-        } else if (color == CellColor.Red) {
+        else if (color == CellColor.Red) 
             animator.SetInteger("Color", 2);
-            GetComponent<SpriteRenderer>().flipX = true;
-        }
+        else if (color == CellColor.Purple) 
+            animator.SetInteger("Color", 3);
+        else if (color == CellColor.Orange) 
+            animator.SetInteger("Color", 4);
+        else if (color == CellColor.Yellow) 
+            animator.SetInteger("Color", 5);
+        else if (color == CellColor.Brown) 
+            animator.SetInteger("Color", 6);
+        else if (color == CellColor.Green) 
+            animator.SetInteger("Color", 7);
+        
     }
     void Update() {
         coords = hexCalculator.HexFromPosition(transform.position);

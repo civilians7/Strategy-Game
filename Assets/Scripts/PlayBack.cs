@@ -2,10 +2,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 using HexMapTools;
-using UnityEngine.UI;
 
 public class PlayBack : MonoBehaviour {
-
 
     private GameManager gameManager;
 	// Use this for initialization

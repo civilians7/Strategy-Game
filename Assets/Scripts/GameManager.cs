@@ -13,16 +13,17 @@ public class GameManager : MonoBehaviour {
     public Troop[] troopArray; //keep
     private TurnDisplay turnDisplay;
     private SeasonDisplay seasonDisplay;
-    private PlayBack playBackDisplay;
+    private PlayBackDisplay playBackDisplay;
     private HexControls hexControls;
 
 	// Use this for initialization
 	void Start () {
         turnDisplay = FindObjectOfType<TurnDisplay>();
         seasonDisplay = FindObjectOfType<SeasonDisplay>();
-        playBackDisplay = FindObjectOfType<PlayBack>();
+        playBackDisplay = FindObjectOfType<PlayBackDisplay>();
         hexControls = FindObjectOfType<HexControls>();
         turnNum = 4;
+        playBackDisplay.Disable();
 	}
 
     void Update() {
@@ -42,7 +43,7 @@ public class GameManager : MonoBehaviour {
 
         if (turnNum == 0) {
             bool conflictSolved = false;
-
+            playBackDisplay.Disable();
             seasonDisplay.SeasonCounter();
             turnDisplay.SetText("Next Season");
             hexControls.ChangePlayer(CellColor.White);
@@ -67,6 +68,7 @@ public class GameManager : MonoBehaviour {
                 troop.HandleAction();
             }
         }else if (turnNum == 1) {
+            playBackDisplay.Enable();
             turnDisplay.SetText("Finish Turn");
             hexControls.ChangePlayer(CellColor.Blue);
         } else if (turnNum == 2) {
