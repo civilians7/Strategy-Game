@@ -13,14 +13,17 @@ public class GameManager : MonoBehaviour {
     public Troop[] troopArray; //keep
     private TurnDisplay turnDisplay;
     private SeasonDisplay seasonDisplay;
+    private PlayBack playBackDisplay;
     private HexControls hexControls;
-    private int turnInSeason = 1; //moving to seperate season class
 
 	// Use this for initialization
 	void Start () {
         turnDisplay = FindObjectOfType<TurnDisplay>();
         seasonDisplay = FindObjectOfType<SeasonDisplay>();
+        playBackDisplay = FindObjectOfType<PlayBack>();
         hexControls = FindObjectOfType<HexControls>();
+        playBackDisplay.SetText("");
+        turnNum = 4;
 	}
 
     void Update() {
@@ -28,44 +31,51 @@ public class GameManager : MonoBehaviour {
     }
 
     public void EndTurn() { //rename and clean up code
-        troopArray = GameObject.FindObjectsOfType<Troop>();
+        troopArray = FindObjectsOfType<Troop>();
         hexControls.planningMode = false;
-        if (turnNum >= 3) {
+        if (turnNum == 3) {
             turnNum = 0;
-        } else {
+        } else if (turnNum == 4) {
+            turnNum = 1;
+        } else { 
             turnNum += 1;
         }
 
         if (turnNum == 0) {
             bool conflictSolved = false;
-            turnDisplay.SetTurnDisplay("");
+            DisableDisplays();
             hexControls.ChangePlayer(CellColor.White);
-            seasonDisplay.SeasonCounter();
             int i = 0;
             do {
+                conflictSolved = false;
                 foreach (Troop troop in troopArray) {
                     if (i == 0) {
                         hexControls.FindPath(troop);
                     }
                 }
                 foreach (Troop troop in troopArray) {
-                    conflictSolved = troop.ActionTurn();
+                    if (troop.ActionTurn()) {
+                        conflictSolved = true;
+                    }
+                    troop.conflictingCells.Clear();
+                    troop.conflictingTroops.Clear();
                 }
                 i++;
-                print("loop number: " + i);
-            } while (conflictSolved && i < 10);
+            } while (conflictSolved && i < 5);
             foreach (Troop troop in troopArray) {
                 troop.HandleAction();
             }
+            turnDisplay.SetText("Next Season");
+            seasonDisplay.SeasonCounter();
         }else if (turnNum == 1) {
-            turnDisplay.SetTurnDisplay("Player One");
+            playBackDisplay.SetText("Review");
+            turnDisplay.SetText("Finish Turn");
             hexControls.ChangePlayer(CellColor.Blue);
         } else if (turnNum == 2) {
-            turnDisplay.SetTurnDisplay("Player Two");
             hexControls.ChangePlayer(CellColor.Red);
            
         } else if (turnNum == 3) {
-            turnDisplay.SetTurnDisplay("Ready?");
+            turnDisplay.SetText("Ready?");
             hexControls.ChangePlayer(CellColor.White);
         }
 
@@ -83,5 +93,11 @@ public class GameManager : MonoBehaviour {
             }
         }
         hexControls.planningMode = true;
+    }
+
+    private void DisableDisplays() {
+        turnDisplay.SetText("");
+        playBackDisplay.SetText("");
+        seasonDisplay.SetText("");
     }
 }

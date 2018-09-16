@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using HexMapTerrain;
 using HexMapTools;
+using UnityEditor;
 
 public enum CellColor { White = 0, Blue, Red, Purple, Orange, Yellow, Brown, Green }
 
@@ -20,7 +21,7 @@ public class Troop : MonoBehaviour {
     //location and movement
     public Vector3 currentPos;
     public Vector3 newPos;
-    public CellColor color = CellColor.Blue;
+    public CellColor color = CellColor.White;
     public Vector3 direction = new Vector3(0,0,0);
 
     //Support
@@ -36,10 +37,10 @@ public class Troop : MonoBehaviour {
     public List<HexCoordinates> coordPath;
     public List<HexCoordinates> reviewAnimation;
 
-    //class references
+    //references
     private HexControls hexControls;
-    private GameManager gameManager; //not used
     private HexCalculator hexCalculator;
+    private Animator animator;
 
     //action move animation logic
     public bool firstPass = true;
@@ -49,6 +50,19 @@ public class Troop : MonoBehaviour {
     private float newPosPoint; 
     private float transformPoint;
 
+    private void OnDrawGizmos()
+        {
+            if (color == CellColor.White)
+                return;
+
+            if (color == CellColor.Red)
+                Gizmos.color = UnityEngine.Color.red;
+            else
+                Gizmos.color = UnityEngine.Color.blue;
+
+            Gizmos.DrawWireSphere(transform.position, 0.433f);
+        }
+
     // Use this for initialization
     void Start() {
         HexGrid hexGrid = FindObjectOfType<HexGrid>().GetComponent<HexGrid>();
@@ -56,9 +70,17 @@ public class Troop : MonoBehaviour {
         newPos = currentPos;
         supportedByTroops.Add(this);
         hexControls = FindObjectOfType<HexControls>();
-        gameManager = FindObjectOfType<GameManager>();
+        animator = GetComponent<Animator>();
         hexCalculator = hexGrid.HexCalculator;
+        actionPower = basePower;
 
+        if (color == CellColor.Blue) {
+            animator.SetInteger("Color", 1);
+            GetComponent<SpriteRenderer>().flipX = false;
+        } else if (color == CellColor.Red) {
+            animator.SetInteger("Color", 2);
+            GetComponent<SpriteRenderer>().flipX = true;
+        }
     }
     void Update() {
         coords = hexCalculator.HexFromPosition(transform.position);
@@ -170,41 +192,44 @@ public class Troop : MonoBehaviour {
             supportingTroop = null;
         }
     }
-
     public bool ResolveConflicts() {
         bool conflictSolved = false;
         bool pathStopped = false;
         for (int i = 0; i < cellPath.Count; i++) { // loop through animation path and check for the conflict cells
             bool emptySpace = true;
             if (!pathStopped) {
+
                 for (int x = 0; x < conflictingCells.Count; x++) {
                     if (cellPath[i] == conflictingCells[x]) {
                         emptySpace = false;
-                        Debug.Log(conflictingCells[x] == GetComponentInParent<Cell>()); // special condition: conflict is handled at troops currentpos
                         if (conflictingCells[x] == GetComponentInParent<Cell>()) { // Troop is attacked by enemy and is forced to retreat
-                            if (conflictingTroops[x].actionPower > actionPower) {
-                                Debug.Log(color + " retreating");
+                            if (conflictingTroops[x].actionPower > actionPower) {                               
                                 if (GetComponent<HQ>()) { //Handle End Game Condition
                                     Debug.LogWarning("Game Over! " + conflictingTroops[x].color + " wins!");
+                                    Destroy(gameObject);
                                 } else {
+                                    conflictSolved = true;
                                     Cell retreatCell = hexControls.GetRetreatPath(this, conflictingCells[x]);
                                     if (retreatCell == conflictingCells[x]) { // Troop could not find a cell to retreat to
-                                        print(color + " being destroyed");
-                                        Destroy(this);
+                                        Destroy(gameObject);
+                                        return true;
                                     } else {
                                         finalCellPath.Add(retreatCell);
                                     }
                                 }
                             }
                         } else if (conflictingTroops[x].actionPower < actionPower) { //  Troop attacks enemy troop and moves into the space
-                            finalCellPath.Add(conflictingCells[x]);
-                            conflictSolved = true;
-                        } else if (conflictingTroops[x].actionPower >= actionPower) { //if conflict troop is equal to or greater than -> stop looping or set pathStopped bool to true and ignore rest
+                            if (!finalCellPath.Contains(conflictingCells[x])) { //This is just a temporary hack, look into problem more later (when target is destroyed it loops all the way to the end)
+                                finalCellPath.Add(conflictingCells[x]);
+                                conflictSolved = true;
+                            }
+                        } else if (conflictingTroops[x].actionPower >= actionPower) { // Troop is unable to move
                             pathStopped = true;
                         }
                     }
                 }
-                if (emptySpace && cellPath[i] != GetComponentInParent<Cell>()) {
+
+                if (emptySpace && cellPath.Count > 1 && cellPath[i] != GetComponentInParent<Cell>()) {
                     conflictSolved = true;
                     finalCellPath.Add(cellPath[i]);
                 }
@@ -213,7 +238,6 @@ public class Troop : MonoBehaviour {
         if (conflictSolved) { //troop successfully moved with conflicts
             List<Cell> newCell = new List<Cell>();
             newCell.Add(finalCellPath[finalCellPath.Count - 1]);
-            conflictingCells.Clear();
             hexControls.SetPath(this, newCell);
         }
         return conflictSolved;

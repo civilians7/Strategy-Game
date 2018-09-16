@@ -27,7 +27,6 @@ namespace HexMapTerrain
         private CellColor player;
         private GameManager gameManager;
         public Troop selectedTroop;
-        private PlayBack playBack; //not used
 
 
         private void Start() {
@@ -37,7 +36,6 @@ namespace HexMapTerrain
             pathFinder = FindObjectOfType<PathFinder>();
             gameManager = FindObjectOfType<GameManager>();
             possibleMoves = new List<HexCoordinates>();
-            playBack = FindObjectOfType<PlayBack>();
 
             cells = new HexContainer<Cell>(hexGrid);
             cells.FillWithChildren();
@@ -233,26 +231,20 @@ namespace HexMapTerrain
             }
         }
 
-        public Cell GetRetreatPath(Troop troop, Cell cell) { //Keep here since it deals with cell pathfinding
+        public Cell GetRetreatPath(Troop troop, Cell cell) { 
             HexCoordinates coords = hexCalculator.HexFromPosition(cell.transform.position);
-            print("coords: " + coords);
             var newCoords = HexUtility.GetInRange(coords, 1);
             Dictionary<int, Vector3> retreatPos = new Dictionary<int, Vector3>();
             foreach (var c in newCoords) {
-                
-
-                if ((!cells[c].GetComponentInChildren<Troop>() || GetComponentInChildren<Troop>() != troop) && troop.color == CellColor.Blue && c.Y == coords.Y && c.X < coords.X) {
+                if (!cells[c].GetComponentInChildren<Troop>() && troop.color == CellColor.Blue && c.Y == coords.Y && c.X < coords.X) {
                     retreatPos.Add(1, hexCalculator.HexToPosition(c));
-                } else if ((!cells[c].GetComponentInChildren<Troop>()|| GetComponentInChildren<Troop>() != troop) && troop.color == CellColor.Red && c.Y == coords.Y && c.X > coords.X) {
+                } else if (!cells[c].GetComponentInChildren<Troop>() && troop.color == CellColor.Red && c.Y == coords.Y && c.X > coords.X) {
                     retreatPos.Add(2, hexCalculator.HexToPosition(c));
-                } else if ((!cells[c].GetComponentInChildren<Troop>()|| GetComponentInChildren<Troop>() != troop) && troop.color == CellColor.Blue && c.X < coords.X) {
+                } else if (!cells[c].GetComponentInChildren<Troop>() && troop.color == CellColor.Blue && c.X < coords.X) {
                     retreatPos.Add(3, hexCalculator.HexToPosition(c));
-                } else if ((!cells[c].GetComponentInChildren<Troop>()|| GetComponentInChildren<Troop>() != troop) && troop.color == CellColor.Red && c.X > coords.X) {
+                } else if (!cells[c].GetComponentInChildren<Troop>() && troop.color == CellColor.Red && c.X > coords.X) {
                     retreatPos.Add(4, hexCalculator.HexToPosition(c));
-                } 
-
-
-               
+                }  
             }
             if (retreatPos.ContainsKey(1)) {
                 troop.newPos = retreatPos[1];
@@ -269,7 +261,6 @@ namespace HexMapTerrain
             } else {
                 return (cell);
             }
-
         }
 
         public void SetPath(Troop troop, List<Cell> path) {

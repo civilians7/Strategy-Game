@@ -10,10 +10,10 @@ public class TurnDisplay : MonoBehaviour {
 	// Use this for initialization
 	void Start () {
         text = GetComponent<Text>();
-        text.text = "";
+        text.text = "Start";
 	}
 	
-    public void SetTurnDisplay(string turn) {
+    public void SetText(string turn) {
         text.text = turn;
     }
 }

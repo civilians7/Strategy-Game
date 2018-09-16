@@ -11,12 +11,14 @@ public class SeasonDisplay : MonoBehaviour {
     private int currentYear; 
     private int currentSeasonNum = 0; 
     private string currentSeason = "Winter"; 
+    Text text;
 
 	// Use this for initialization
 	void Start () {
         seasonText = GetComponent<Text>();
 		currentYear = startYear;
         seasonText.text = currentSeason + " " + currentYear;
+        text = GetComponent<Text>();
 	}
 
     public void SeasonCounter() { //refactor to season display
@@ -38,6 +40,10 @@ public class SeasonDisplay : MonoBehaviour {
         }
 
         seasonText.text = currentSeason + " " + currentYear;
+    }
+
+    public void SetText(string turn) {
+        text.text = turn;
     }
 
 }

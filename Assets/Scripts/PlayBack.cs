@@ -2,12 +2,17 @@
 using System.Collections.Generic;
 using UnityEngine;
 using HexMapTools;
+using UnityEngine.UI;
 
 public class PlayBack : MonoBehaviour {
+
+    Text text;
+
     private GameManager gameManager;
 	// Use this for initialization
 	void Start () {
         gameManager = GetComponent<GameManager>();
+        text = GetComponent<Text>();
 	}
 
     public void Review() {
@@ -17,6 +22,10 @@ public class PlayBack : MonoBehaviour {
             }
             troop.ActionMove();
         }
+    }
+
+    public void SetText(string turn) {
+        text.text = turn;
     }
 }
 
