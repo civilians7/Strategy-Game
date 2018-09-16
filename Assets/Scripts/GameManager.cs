@@ -22,7 +22,6 @@ public class GameManager : MonoBehaviour {
         seasonDisplay = FindObjectOfType<SeasonDisplay>();
         playBackDisplay = FindObjectOfType<PlayBack>();
         hexControls = FindObjectOfType<HexControls>();
-        playBackDisplay.SetText("");
         turnNum = 4;
 	}
 
@@ -43,7 +42,9 @@ public class GameManager : MonoBehaviour {
 
         if (turnNum == 0) {
             bool conflictSolved = false;
-            DisableDisplays();
+
+            seasonDisplay.SeasonCounter();
+            turnDisplay.SetText("Next Season");
             hexControls.ChangePlayer(CellColor.White);
             int i = 0;
             do {
@@ -65,10 +66,7 @@ public class GameManager : MonoBehaviour {
             foreach (Troop troop in troopArray) {
                 troop.HandleAction();
             }
-            turnDisplay.SetText("Next Season");
-            seasonDisplay.SeasonCounter();
         }else if (turnNum == 1) {
-            playBackDisplay.SetText("Review");
             turnDisplay.SetText("Finish Turn");
             hexControls.ChangePlayer(CellColor.Blue);
         } else if (turnNum == 2) {
@@ -93,11 +91,5 @@ public class GameManager : MonoBehaviour {
             }
         }
         hexControls.planningMode = true;
-    }
-
-    private void DisableDisplays() {
-        turnDisplay.SetText("");
-        playBackDisplay.SetText("");
-        seasonDisplay.SetText("");
     }
 }

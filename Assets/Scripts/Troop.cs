@@ -84,6 +84,11 @@ public class Troop : MonoBehaviour {
     }
     void Update() {
         coords = hexCalculator.HexFromPosition(transform.position);
+        AnimateTroops();
+
+    }
+
+    private void AnimateTroops() {
         if (coordPath.Count > 0) {
             transformPoint = (transform.position.x * direction.x);
             transform.Translate(direction);
@@ -104,9 +109,8 @@ public class Troop : MonoBehaviour {
                     transform.position = newPos;
                     hexControls.TroopMoved(this);
                 }
-            } 
+            }
         }
-
     }
 
     public void ActionMove() {
