@@ -18,12 +18,10 @@ public class TurnDisplay : MonoBehaviour {
     }
 
     public void Disable() {
-        text.color = new Color(text.color.r,text.color.g,text.color.b,0f);
-        enabled = false;
+        transform.SetParent(FindObjectOfType<GameManager>().transform);
     }
 
     public void Enable() {
-        text.color = new Color(text.color.r,text.color.g,text.color.b,1f);
-        enabled = true;
+        transform.SetParent(FindObjectOfType<LevelCanvas>().transform);
     }
 }

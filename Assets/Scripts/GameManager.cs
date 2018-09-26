@@ -7,46 +7,52 @@ using HexMapTerrain;
 
 public class GameManager : MonoBehaviour {
 
-    public int turnNum = 0; //keep
+    public int turnNum; //keep
     public int turnsPerSeason = 1; //keep
-    public string startingSeason = "Winter"; //eventually refactor to seperate season class
     public Troop[] troopArray; //keep
+    public bool playBackMode = false;
+    private PlayBack playBack;
     private TurnDisplay turnDisplay;
     private SeasonDisplay seasonDisplay;
-    private PlayBackDisplay playBackDisplay;
+    private PlayBackDisplay[] playBackDisplay;
     private HexControls hexControls;
+    private ReviewButton reviewButton;
+    private int roundNum;
 
-	// Use this for initialization
-	void Start () {
+    // Use this for initialization
+    void Start() {
         turnDisplay = FindObjectOfType<TurnDisplay>();
         seasonDisplay = FindObjectOfType<SeasonDisplay>();
-        playBackDisplay = FindObjectOfType<PlayBackDisplay>();
+        playBackDisplay = FindObjectsOfType<PlayBackDisplay>();
         hexControls = FindObjectOfType<HexControls>();
-        turnNum = 4;
-        playBackDisplay.Disable();
-	}
+        reviewButton = FindObjectOfType<ReviewButton>();
+        playBack = FindObjectOfType<PlayBack>();
+        reviewButton.Disable();
+        foreach (PlayBackDisplay display in playBackDisplay) {
+            display.Disable();
+        }
+    }
 
     void Update() {
         troopArray = FindObjectsOfType<Troop>();
     }
 
     public void EndTurn() { //rename and clean up code
+        turnNum++;
         troopArray = FindObjectsOfType<Troop>();
         hexControls.planningMode = false;
-        if (turnNum == 3) {
-            turnNum = 0;
-        } else if (turnNum == 4) {
-            turnNum = 1;
-        } else { 
-            turnNum += 1;
-        }
+        hexControls.DeselectCell();
 
-        if (turnNum == 0) {
+        if (turnNum%4 == 0) {
+            roundNum++;
+            playBack.CreateNewSeason();
             bool conflictSolved = false;
-            playBackDisplay.Disable();
-            seasonDisplay.SeasonCounter();
+            seasonDisplay.SeasonCounter(roundNum);
             turnDisplay.SetText("Next Season");
-            hexControls.ChangePlayer(CellColor.White);
+            reviewButton.Disable();
+            turnDisplay.Disable();
+            seasonDisplay.Disable();
+            hexControls.ChangePlayer(TroopColor.White);
             int i = 0;
             do {
                 conflictSolved = false;
@@ -63,27 +69,30 @@ public class GameManager : MonoBehaviour {
                     troop.conflictingTroops.Clear();
                 }
                 i++;
+                if (i == 5) { Debug.LogWarning("Action Turn Looped 5 times"); }
             } while (conflictSolved && i < 5);
             foreach (Troop troop in troopArray) {
                 troop.HandleAction();
             }
-        }else if (turnNum == 1) {
-            playBackDisplay.Enable();
+            Invoke("EnableDisplays", 1);
+
+        } else if (turnNum%4 == 1) {
+            if (roundNum > 0) {reviewButton.Enable(); }
             turnDisplay.SetText("Finish Turn");
-            hexControls.ChangePlayer(CellColor.Blue);
-        } else if (turnNum == 2) {
-            hexControls.ChangePlayer(CellColor.Red);
-           
-        } else if (turnNum == 3) {
+            hexControls.ChangePlayer(TroopColor.Blue);
+        } else if (turnNum%4 == 2) {
+            hexControls.ChangePlayer(TroopColor.Red);
+
+        } else if (turnNum%4 == 3) {
             turnDisplay.SetText("Ready?");
-            hexControls.ChangePlayer(CellColor.White);
+            hexControls.ChangePlayer(TroopColor.White);
         }
 
         foreach (Troop thisTroop in troopArray) {
             thisTroop.GetComponent<LineRenderer>().SetPosition(0, new Vector3(0, 0, 0));
             thisTroop.GetComponent<LineRenderer>().SetPosition(1, new Vector3(0, 0, 0));
             thisTroop.firstPass = true;
-            if (turnNum != 0 && thisTroop.currentPos != thisTroop.transform.position) {
+            if (turnNum%4 != 0 && thisTroop.currentPos != thisTroop.transform.position) {
                 thisTroop.newPos = thisTroop.transform.position;
                 thisTroop.transform.position = thisTroop.currentPos;
 
@@ -93,5 +102,30 @@ public class GameManager : MonoBehaviour {
             }
         }
         hexControls.planningMode = true;
+    }
+
+    private void EnableDisplays() {
+        turnDisplay.Enable();
+        seasonDisplay.Enable();
+    }
+
+    public void TogglePlaybackMode() {
+        FindObjectOfType<SeasonSlider>().EnterReviewMode();
+        playBackMode = !playBackMode;
+        if (playBackMode) { //turn on playback
+            turnDisplay.Disable();
+            foreach (PlayBackDisplay display in playBackDisplay) {
+                display.Enable();
+            }
+        } else { // turn off playback
+            turnDisplay.Enable();
+            foreach(Troop troop in troopArray) {
+                troop.ResetArrows();
+                troop.transform.position = troop.currentPos;
+            }
+            foreach (PlayBackDisplay display in playBackDisplay) {
+                display.Disable();
+            }
+        }
     }
 }

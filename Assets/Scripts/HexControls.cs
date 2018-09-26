@@ -24,9 +24,10 @@ namespace HexMapTerrain
         private HexCoordinates selectedCoords;
         private List<HexCoordinates> possibleMoves;
 
-        private CellColor player;
+        private TroopColor player;
         private GameManager gameManager;
         public Troop selectedTroop;
+        public Cell graveyard;
 
 
         private void Start() {
@@ -39,10 +40,8 @@ namespace HexMapTerrain
 
             cells = new HexContainer<Cell>(hexGrid);
             cells.FillWithChildren();
-
             // SetUpMap();
         }
-
 
 
         private void Update() {
@@ -53,7 +52,7 @@ namespace HexMapTerrain
                 Vector3 mouse = Camera.main.ScreenToWorldPoint(Input.mousePosition);
                 HexCoordinates mouseCoords = hexCalculator.HexFromPosition(mouse);
 
-                if (player == CellColor.White)
+                if (player == TroopColor.White)
                     return;
 
                 //Move or select cell
@@ -69,15 +68,16 @@ namespace HexMapTerrain
         public void SelectTroop(Troop troop) {
             Vector3 cellPos = troop.GetComponentInParent<Cell>().transform.position;
             HexCoordinates cellCoords = hexCalculator.HexFromPosition(cellPos);
-            if (player == CellColor.White)
+            if (player == TroopColor.White)
                 return;
+            if (gameManager.playBackMode) {
 
-            //Move or select cell
-            if (!selectedTroop) {
-                SelectCell(cellCoords);
+            } else {
+                //Move or select cell
+                if (!selectedTroop) {
+                    SelectCell(cellCoords);
+                }
             }
-
-
 
         }
 
@@ -99,11 +99,11 @@ namespace HexMapTerrain
 
         }
 
-        public void HandleWin(CellColor color) //Call from GameManager when game is over
+        public void HandleWin(TroopColor color) //Call from GameManager when game is over
         {
 
 
-            CellColor winner = CellColor.White;
+            TroopColor winner = TroopColor.White;
 
             print("Game over! " + color + " Wins!");
             cameraAnimator.SetInteger("Player", (int)winner);
@@ -112,7 +112,7 @@ namespace HexMapTerrain
 
 
         //Change the player and the background
-        public void ChangePlayer(CellColor color) {
+        public void ChangePlayer(TroopColor color) {
 
             player = color;
 
@@ -212,11 +212,13 @@ namespace HexMapTerrain
 
             foreach (HexCoordinates hexCoord in troop.coordPath) {
                 troop.cellPath.Add(cells[hexCoord]);
+                troop.vectorPath.Add(hexCalculator.HexToPosition(hexCoord));
             }
 
         }
 
         public void FindConflicts(Troop thisTroop) {
+            if (thisTroop.GetComponentInParent<Cell>() == graveyard) { return; }
             foreach (Troop thatTroop in gameManager.troopArray) {
                 if (thisTroop != thatTroop) {
                     foreach (HexCoordinates thisPath in thisTroop.coordPath) {
@@ -236,13 +238,13 @@ namespace HexMapTerrain
             var newCoords = HexUtility.GetInRange(coords, 1);
             Dictionary<int, Vector3> retreatPos = new Dictionary<int, Vector3>();
             foreach (var c in newCoords) {
-                if (!cells[c].GetComponentInChildren<Troop>() && troop.color == CellColor.Blue && c.Y == coords.Y && c.X < coords.X) {
+                if (!cells[c].GetComponentInChildren<Troop>() && troop.color == TroopColor.Blue && c.Y == coords.Y && c.X < coords.X) {
                     retreatPos.Add(1, hexCalculator.HexToPosition(c));
-                } else if (!cells[c].GetComponentInChildren<Troop>() && troop.color == CellColor.Red && c.Y == coords.Y && c.X > coords.X) {
+                } else if (!cells[c].GetComponentInChildren<Troop>() && troop.color == TroopColor.Red && c.Y == coords.Y && c.X > coords.X) {
                     retreatPos.Add(2, hexCalculator.HexToPosition(c));
-                } else if (!cells[c].GetComponentInChildren<Troop>() && troop.color == CellColor.Blue && c.X < coords.X) {
+                } else if (!cells[c].GetComponentInChildren<Troop>() && troop.color == TroopColor.Blue && c.X < coords.X) {
                     retreatPos.Add(3, hexCalculator.HexToPosition(c));
-                } else if (!cells[c].GetComponentInChildren<Troop>() && troop.color == CellColor.Red && c.X > coords.X) {
+                } else if (!cells[c].GetComponentInChildren<Troop>() && troop.color == TroopColor.Red && c.X > coords.X) {
                     retreatPos.Add(4, hexCalculator.HexToPosition(c));
                 }  
             }
@@ -266,13 +268,13 @@ namespace HexMapTerrain
         public void SetPath(Troop troop, List<Cell> path) {
             troop.coordPath.Clear();
             troop.cellPath.Clear();
+            troop.vectorPath.Clear();
             foreach (Cell cell in path) {
                 HexCoordinates hexCoord = hexCalculator.HexFromPosition(cell.transform.position);
                 troop.coordPath.Add(hexCoord);
                 troop.cellPath.Add(cell);
+                troop.vectorPath.Add(cell.transform.position);
             }
         }
-
-
     }
 }

@@ -5,7 +5,7 @@ using HexMapTerrain;
 using HexMapTools;
 using UnityEditor;
 
-public enum CellColor { White = 0, Blue, Red, Purple, Orange, Yellow, Brown, Green }
+public enum TroopColor { White = 0, Blue, Red, Purple, Orange, Yellow, Brown, Green }
 
 public class Troop : MonoBehaviour {
 
@@ -21,7 +21,7 @@ public class Troop : MonoBehaviour {
     //location and movement
     public Vector3 currentPos;
     public Vector3 newPos;
-    public CellColor color = CellColor.White;
+    public TroopColor color = TroopColor.White;
     public Vector3 direction = new Vector3(0,0,0);
 
     //Support
@@ -36,11 +36,15 @@ public class Troop : MonoBehaviour {
     public List<Cell> finalCellPath = new List<Cell>();
     public List<HexCoordinates> coordPath;
     public List<HexCoordinates> reviewAnimation;
+    public List<Vector3> vectorPath;
+    public List<Vector3> supportingPositions;
 
     //references
     private HexControls hexControls;
     private HexCalculator hexCalculator;
     private Animator animator;
+    private PlayBack playBack;
+    public GameObject movementArrow;
 
     //action move animation logic
     public bool firstPass = true;
@@ -50,25 +54,24 @@ public class Troop : MonoBehaviour {
     private float newPosPoint; 
     private float transformPoint;
 
-
     private void OnDrawGizmos()
         {
-            if (color == CellColor.White)
+            if (color == TroopColor.White)
                 return;
 
-            if (color == CellColor.Red)
+            if (color == TroopColor.Red)
                 Gizmos.color = Color.red;
-            else if(color == CellColor.Blue)
+            else if(color == TroopColor.Blue)
                 Gizmos.color = Color.blue;
-            else if(color == CellColor.Purple)
+            else if(color == TroopColor.Purple)
                 Gizmos.color = Color.magenta;
-            else if(color == CellColor.Orange)
+            else if(color == TroopColor.Orange)
                 Gizmos.color = new Color(1f,0.456129f,0.07111073f);
-            else if(color == CellColor.Yellow)
+            else if(color == TroopColor.Yellow)
                 Gizmos.color = Color.yellow;
-            else if(color == CellColor.Brown)
+            else if(color == TroopColor.Brown)
                 Gizmos.color = Color.grey;
-            else if(color == CellColor.Green)
+            else if(color == TroopColor.Green)
                 Gizmos.color = Color.green;
 
             Gizmos.DrawWireSphere(transform.position, 0.433f);
@@ -83,28 +86,36 @@ public class Troop : MonoBehaviour {
         hexControls = FindObjectOfType<HexControls>();
         animator = GetComponent<Animator>();
         hexCalculator = hexGrid.HexCalculator;
+        playBack = FindObjectOfType<PlayBack>();
         actionPower = basePower;
 
-        if (color == CellColor.Blue) 
+        if (color == TroopColor.Blue) 
             animator.SetInteger("Color", 1);
-        else if (color == CellColor.Red) 
+        else if (color == TroopColor.Red) 
             animator.SetInteger("Color", 2);
-        else if (color == CellColor.Purple) 
+        else if (color == TroopColor.Purple) 
             animator.SetInteger("Color", 3);
-        else if (color == CellColor.Orange) 
+        else if (color == TroopColor.Orange) 
             animator.SetInteger("Color", 4);
-        else if (color == CellColor.Yellow) 
+        else if (color == TroopColor.Yellow) 
             animator.SetInteger("Color", 5);
-        else if (color == CellColor.Brown) 
+        else if (color == TroopColor.Brown) 
             animator.SetInteger("Color", 6);
-        else if (color == CellColor.Green) 
+        else if (color == TroopColor.Green) 
             animator.SetInteger("Color", 7);
-        
     }
     void Update() {
         coords = hexCalculator.HexFromPosition(transform.position);
         AnimateTroops();
 
+    }
+
+        void OnMouseDown() {
+        if (hexControls.selectedTroop == this) {
+            hexControls.DeselectCell();
+        } else {
+            hexControls.SelectTroop(this);
+        }
     }
 
     private void AnimateTroops() {
@@ -125,11 +136,12 @@ public class Troop : MonoBehaviour {
                     moveCounter = 0;
                     coordPath.Clear();
                     cellPath.Clear();
+                    vectorPath.Clear();
                     transform.position = newPos;
                     hexControls.TroopMoved(this);
                 }
             }
-        }
+        } 
     }
 
     public void ActionMove() {
@@ -156,7 +168,7 @@ public class Troop : MonoBehaviour {
     }
 
     void SupportedBy(Troop ally) {
-
+        if (ally.transform.position != ally.currentPos) { return; }
         foreach (Troop troop in supportedByTroops) {
             if (ally == troop || ally.supportingTroop != null) {
                 return;
@@ -169,7 +181,8 @@ public class Troop : MonoBehaviour {
         }
         ally.supportingTroop = this;
         supportedByTroops.Add(ally);
-
+        ally.supportingPositions.Add(ally.transform.position);
+        ally.supportingPositions.Add(transform.position);
         ally.GetComponent<LineRenderer>().SetPosition(0, ally.transform.position);
         ally.GetComponent<LineRenderer>().SetPosition(1, transform.position);
         
@@ -179,8 +192,7 @@ public class Troop : MonoBehaviour {
     public void Move() {
         
         foreach (Troop troop in supportedByTroops) {
-            troop.GetComponent<LineRenderer>().SetPosition(0, new Vector3(0, 0, 0));
-            troop.GetComponent<LineRenderer>().SetPosition(1, new Vector3(0, 0, 0));
+            troop.ResetArrows();
             troop.supportingTroop = null;
         }
         actionPower = basePower;
@@ -192,15 +204,8 @@ public class Troop : MonoBehaviour {
         Destroy(gameObject);
     }
 
-    void OnMouseDown() {
-        if (hexControls.selectedTroop == this) {
-            hexControls.DeselectCell();
-        } else {
-            hexControls.SelectTroop(this);
-        }
-    }
-
     public bool ActionTurn() {
+        playBack.AddTroopValues(this, vectorPath, supportingTroop,supportingPositions);
         hexControls.FindConflicts(this);
         if (conflictingCells.Count > 0) {
             CutSupport();
@@ -229,13 +234,13 @@ public class Troop : MonoBehaviour {
                             if (conflictingTroops[x].actionPower > actionPower) {                               
                                 if (GetComponent<HQ>()) { //Handle End Game Condition
                                     Debug.LogWarning("Game Over! " + conflictingTroops[x].color + " wins!");
-                                    Destroy(gameObject);
+                                    transform.position = hexControls.graveyard.transform.position;
                                 } else {
                                     conflictSolved = true;
                                     Cell retreatCell = hexControls.GetRetreatPath(this, conflictingCells[x]);
                                     if (retreatCell == conflictingCells[x]) { // Troop could not find a cell to retreat to
-                                        Destroy(gameObject);
-                                        return true;
+                                        transform.position = hexControls.graveyard.transform.position;
+                                        finalCellPath.Add(hexControls.graveyard);
                                     } else {
                                         finalCellPath.Add(retreatCell);
                                     }
@@ -286,7 +291,33 @@ public class Troop : MonoBehaviour {
         actionPower = basePower;
         supportingTroop = null;
         supportedByTroops.Clear();
+        supportingPositions.Clear();
         currentPos = newPos;
+    }
+
+    public void SeasonPlayBack(List<TroopValues> troopReview) { //troopReview contains troopValues which contains [Path, supporting troop]
+        //troopReview[0] //set troop position to the first in the troop value path and draw the arrows{
+        transform.position = troopReview[0].path[0];
+        if (troopReview[0].path.Count > 1) {
+            GetComponent<LineRenderer>().startColor = new Color(.3191082f, 0.7802383f, 0.9528302f);
+            GetComponent<LineRenderer>().endColor = new Color(.3191082f, 0.7802383f, 0.9528302f);
+            GetComponent<LineRenderer>().positionCount = troopReview[0].path.Count;
+            for (int i = 0; i < troopReview[0].path.Count; i++) {
+                GetComponent<LineRenderer>().SetPosition(i, troopReview[0].path[i]);
+            }
+        }
+        if (troopReview[0].supportingTroop) {
+            GetComponent<LineRenderer>().SetPosition(0, troopReview[0].supportingPositions[0]);
+            GetComponent<LineRenderer>().SetPosition(1, troopReview[0].supportingPositions[1]);
+        }
+    }
+
+    public void ResetArrows() {
+        GetComponent<LineRenderer>().startColor = new Color(0.2588235f, 0.7254902f, 0.3738212f);
+        GetComponent<LineRenderer>().endColor = new Color(0.2588235f, 0.7254902f, 0.3738212f);
+        for (int i = 0; i < GetComponent<LineRenderer>().positionCount; i++) {
+            GetComponent<LineRenderer>().SetPosition(i, new Vector3(0, 0, 0));
+        }
     }
 
 }
