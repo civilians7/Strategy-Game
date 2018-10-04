@@ -22,7 +22,7 @@ public class Troop : MonoBehaviour {
     public Vector3 currentPos;
     public Vector3 newPos;
     public TroopColor color = TroopColor.White;
-    public Vector3 direction = new Vector3(0,0,0);
+    private Vector3 direction = new Vector3(0,0,0);
 
     //Support
     public List<Troop> supportedByTroops = new List<Troop>(); //privatize both of these
@@ -45,6 +45,8 @@ public class Troop : MonoBehaviour {
     private Animator animator;
     private PlayBack playBack;
     public GameObject movementArrow;
+    private PlayerColors playerColors;
+    private GameManager gameManager;
 
     //action move animation logic
     public bool firstPass = true;
@@ -53,29 +55,38 @@ public class Troop : MonoBehaviour {
     private Vector3 point;
     private float newPosPoint; 
     private float transformPoint;
+    private List<List<Vector3>> reviewPaths = new List<List<Vector3>>();
+    public int reviewPathNum;
 
-    private void OnDrawGizmos()
-        {
-            if (color == TroopColor.White)
-                return;
+    private void OnDrawGizmos() {
+        if (color == TroopColor.White)
+            return;
 
-            if (color == TroopColor.Red)
-                Gizmos.color = Color.red;
-            else if(color == TroopColor.Blue)
-                Gizmos.color = Color.blue;
-            else if(color == TroopColor.Purple)
-                Gizmos.color = Color.magenta;
-            else if(color == TroopColor.Orange)
-                Gizmos.color = new Color(1f,0.456129f,0.07111073f);
-            else if(color == TroopColor.Yellow)
-                Gizmos.color = Color.yellow;
-            else if(color == TroopColor.Brown)
-                Gizmos.color = Color.grey;
-            else if(color == TroopColor.Green)
-                Gizmos.color = Color.green;
+        if (color == TroopColor.Red)
+            Gizmos.color = Color.red;
+        else if (color == TroopColor.Blue)
+            Gizmos.color = Color.blue;
+        else if (color == TroopColor.Purple)
+            Gizmos.color = Color.magenta;
+        else if (color == TroopColor.Orange)
+            Gizmos.color = new Color(1f, 0.456129f, 0.07111073f);
+        else if (color == TroopColor.Yellow)
+            Gizmos.color = Color.yellow;
+        else if (color == TroopColor.Brown)
+            Gizmos.color = Color.grey;
+        else if (color == TroopColor.Green)
+            Gizmos.color = Color.green;
 
-            Gizmos.DrawWireSphere(transform.position, 0.433f);
+        Gizmos.DrawWireSphere(transform.position, 0.433f);
+    }
+
+    void OnMouseDown() {
+        if (hexControls.selectedTroop == this) {
+            hexControls.DeselectCell();
+        } else {
+            hexControls.SelectTroop(this);
         }
+    }
 
     // Use this for initialization
     void Start() {
@@ -88,34 +99,32 @@ public class Troop : MonoBehaviour {
         hexCalculator = hexGrid.HexCalculator;
         playBack = FindObjectOfType<PlayBack>();
         actionPower = basePower;
+        playerColors = FindObjectOfType<PlayerColors>();
+        gameManager = FindObjectOfType<GameManager>();
 
-        if (color == TroopColor.Blue) 
+        if (color == TroopColor.Blue)
+            color = playerColors.playerOne;
+        else if (color == TroopColor.Red)
+            color = playerColors.playerTwo;
+
+        if (color == TroopColor.Blue)
             animator.SetInteger("Color", 1);
-        else if (color == TroopColor.Red) 
+        else if (color == TroopColor.Red)
             animator.SetInteger("Color", 2);
-        else if (color == TroopColor.Purple) 
+        else if (color == TroopColor.Purple)
             animator.SetInteger("Color", 3);
-        else if (color == TroopColor.Orange) 
+        else if (color == TroopColor.Orange)
             animator.SetInteger("Color", 4);
-        else if (color == TroopColor.Yellow) 
+        else if (color == TroopColor.Yellow)
             animator.SetInteger("Color", 5);
-        else if (color == TroopColor.Brown) 
+        else if (color == TroopColor.Brown)
             animator.SetInteger("Color", 6);
-        else if (color == TroopColor.Green) 
+        else if (color == TroopColor.Green)
             animator.SetInteger("Color", 7);
     }
     void Update() {
         coords = hexCalculator.HexFromPosition(transform.position);
         AnimateTroops();
-
-    }
-
-        void OnMouseDown() {
-        if (hexControls.selectedTroop == this) {
-            hexControls.DeselectCell();
-        } else {
-            hexControls.SelectTroop(this);
-        }
     }
 
     private void AnimateTroops() {
@@ -137,8 +146,7 @@ public class Troop : MonoBehaviour {
                     coordPath.Clear();
                     cellPath.Clear();
                     vectorPath.Clear();
-                    transform.position = newPos;
-                    hexControls.TroopMoved(this);
+                    TroopMoved();//if on review mode, update the path and call again
                 }
             }
         } 
@@ -147,11 +155,25 @@ public class Troop : MonoBehaviour {
     public void ActionMove() {
         if (!(coordPath.Count > 0)) {
             moveCounter = 0;
-            hexControls.TroopMoved(this);
+            TroopMoved();
         } else {
             point = hexCalculator.HexToPosition(coordPath[moveCounter]);
             direction = (point - transform.position) * Time.deltaTime * coordPath.Count;
             newPosPoint = (point.x * direction.x);
+        }
+    }
+
+    private void TroopMoved() {
+        if (gameManager.turnNum % 4 == 0) {
+            transform.SetParent(hexControls.GetCell(coords).transform);
+            transform.position = newPos;
+        } else if (reviewPaths.Count > reviewPathNum+1){ //when all troops are done, if season is not up to date, change slider value and auto play
+            Debug.Log(reviewPathNum + " " + reviewPaths.Count);
+            reviewPathNum++;
+            foreach (Vector3 place in reviewPaths[reviewPathNum]) {
+                coordPath.Add(hexCalculator.HexFromPosition(place));
+            }
+            ActionMove();
         }
     }
 
@@ -189,10 +211,10 @@ public class Troop : MonoBehaviour {
         actionPower += ally.basePower;
     }
 
-    public void Move() {
+    public void PlanningMove() {
         
         foreach (Troop troop in supportedByTroops) {
-            troop.ResetArrows();
+            troop.PlayBackReset();
             troop.supportingTroop = null;
         }
         actionPower = basePower;
@@ -200,11 +222,7 @@ public class Troop : MonoBehaviour {
 
     }
 
-    public void DestroyTroop() {
-        Destroy(gameObject);
-    }
-
-    public bool ActionTurn() {
+    public bool ActionTurn() { // many functions to rename to avoid confusion later
         playBack.AddTroopValues(this, vectorPath, supportingTroop,supportingPositions);
         hexControls.FindConflicts(this);
         if (conflictingCells.Count > 0) {
@@ -277,9 +295,6 @@ public class Troop : MonoBehaviour {
         conflictingCells.Clear();
 
         reviewAnimation.Clear();
-        //foreach (HexCoordinates path in coordPath) {
-        //    reviewAnimation.Add(path);
-        //}
         hexControls.SetPath(this, finalCellPath);
         if (finalCellPath.Count > 0) {
             newPos = finalCellPath[finalCellPath.Count - 1].transform.position;
@@ -296,7 +311,10 @@ public class Troop : MonoBehaviour {
     }
 
     public void SeasonPlayBack(List<TroopValues> troopReview) { //troopReview contains troopValues which contains [Path, supporting troop]
-        //troopReview[0] //set troop position to the first in the troop value path and draw the arrows{
+        reviewPathNum = 0;
+        foreach (TroopValues troopValue in troopReview) {
+            reviewPaths.Add(troopValue.path);
+        }
         transform.position = troopReview[0].path[0];
         if (troopReview[0].path.Count > 1) {
             GetComponent<LineRenderer>().startColor = new Color(.3191082f, 0.7802383f, 0.9528302f);
@@ -304,6 +322,9 @@ public class Troop : MonoBehaviour {
             GetComponent<LineRenderer>().positionCount = troopReview[0].path.Count;
             for (int i = 0; i < troopReview[0].path.Count; i++) {
                 GetComponent<LineRenderer>().SetPosition(i, troopReview[0].path[i]);
+                if (i > 0) {
+                    coordPath.Add(hexCalculator.HexFromPosition(troopReview[0].path[i]));
+                }
             }
         }
         if (troopReview[0].supportingTroop) {
@@ -312,7 +333,11 @@ public class Troop : MonoBehaviour {
         }
     }
 
-    public void ResetArrows() {
+    public void PlayBackReset() {
+        reviewPathNum = 0;
+        reviewPaths.Clear();
+        coordPath.Clear();
+        direction = new Vector3(0,0,0);
         GetComponent<LineRenderer>().startColor = new Color(0.2588235f, 0.7254902f, 0.3738212f);
         GetComponent<LineRenderer>().endColor = new Color(0.2588235f, 0.7254902f, 0.3738212f);
         for (int i = 0; i < GetComponent<LineRenderer>().positionCount; i++) {

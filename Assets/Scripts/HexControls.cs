@@ -92,7 +92,7 @@ namespace HexMapTerrain
                 } 
             }
 
-            thisTroop.Move();
+            thisTroop.PlanningMove();
             thisTroop.transform.position = cells[coords].transform.position;
 
             DeselectCell();
@@ -186,11 +186,6 @@ namespace HexMapTerrain
             }
         }
 
-        public void TroopMoved(Troop troop) {
-            troop.transform.SetParent(cells[troop.coords].transform);
-        }
-
-
         public float HexCost(HexCoordinates a, HexCoordinates b) {
 
             Cell cell = cells[b];
@@ -275,6 +270,10 @@ namespace HexMapTerrain
                 troop.cellPath.Add(cell);
                 troop.vectorPath.Add(cell.transform.position);
             }
+        }
+
+        public Cell GetCell(HexCoordinates cellCoords) {
+            return cells[cellCoords];
         }
     }
 }

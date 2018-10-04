@@ -48,7 +48,7 @@ public class PlayBack : MonoBehaviour {
         seasonDisplay.SeasonCounter(selectedSeason);
         
         foreach (Troop troop in gameManager.troopArray) {
-            troop.ResetArrows();
+            troop.PlayBackReset();
             troop.SeasonPlayBack(seasonsList[selectedSeason][troop]); //passing troopReview to each respective troop
         }
     }

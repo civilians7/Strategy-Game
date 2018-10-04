@@ -17,6 +17,7 @@ public class GameManager : MonoBehaviour {
     private PlayBackDisplay[] playBackDisplay;
     private HexControls hexControls;
     private ReviewButton reviewButton;
+    private PlayerColors playerColors;
     private int roundNum;
 
     // Use this for initialization
@@ -28,6 +29,7 @@ public class GameManager : MonoBehaviour {
         reviewButton = FindObjectOfType<ReviewButton>();
         playBack = FindObjectOfType<PlayBack>();
         reviewButton.Disable();
+        playerColors = FindObjectOfType<PlayerColors>();
         foreach (PlayBackDisplay display in playBackDisplay) {
             display.Disable();
         }
@@ -37,7 +39,7 @@ public class GameManager : MonoBehaviour {
         troopArray = FindObjectsOfType<Troop>();
     }
 
-    public void EndTurn() { //rename and clean up code
+    public void EndTurn() { //rename and clean up /refactor / comment code
         turnNum++;
         troopArray = FindObjectsOfType<Troop>();
         hexControls.planningMode = false;
@@ -56,7 +58,7 @@ public class GameManager : MonoBehaviour {
             int i = 0;
             do {
                 conflictSolved = false;
-                foreach (Troop troop in troopArray) {
+                foreach (Troop troop in troopArray) { // Just do this before the loop?
                     if (i == 0) {
                         hexControls.FindPath(troop);
                     }
@@ -79,9 +81,9 @@ public class GameManager : MonoBehaviour {
         } else if (turnNum%4 == 1) {
             if (roundNum > 0) {reviewButton.Enable(); }
             turnDisplay.SetText("Finish Turn");
-            hexControls.ChangePlayer(TroopColor.Blue);
+            hexControls.ChangePlayer(playerColors.playerOne);
         } else if (turnNum%4 == 2) {
-            hexControls.ChangePlayer(TroopColor.Red);
+            hexControls.ChangePlayer(playerColors.playerTwo);
 
         } else if (turnNum%4 == 3) {
             turnDisplay.SetText("Ready?");
@@ -120,12 +122,21 @@ public class GameManager : MonoBehaviour {
         } else { // turn off playback
             turnDisplay.Enable();
             foreach(Troop troop in troopArray) {
-                troop.ResetArrows();
+                troop.PlayBackReset();
                 troop.transform.position = troop.currentPos;
             }
             foreach (PlayBackDisplay display in playBackDisplay) {
                 display.Disable();
             }
+        }
+    }
+
+    public void AnimatePlayBack() {
+        Debug.Log("Animating Playback");
+        foreach (Troop troop in troopArray) {// possibly allow specific selected troops in the future
+            troop.firstPass = true;
+            troop.reviewPathNum = 0;
+            troop.ActionMove();
         }
     }
 }
