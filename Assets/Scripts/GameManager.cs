@@ -21,6 +21,8 @@ public class GameManager : MonoBehaviour {
     private PlayerColors playerColors;
     private SeasonSlider seasonSlider;
     private int roundNum;
+    public TroopColor playerOneColor;
+    public TroopColor playerTwoColor;
 
     // Use this for initialization
     void Start() {
@@ -33,6 +35,8 @@ public class GameManager : MonoBehaviour {
         seasonSlider = FindObjectOfType<SeasonSlider>();
         reviewButton.Disable();
         playerColors = FindObjectOfType<PlayerColors>();
+        playerOneColor = playerColors.playerOne;
+        playerTwoColor = playerColors.playerTwo;
         foreach (PlayBackDisplay display in playBackDisplay) {
             display.Disable();
         }

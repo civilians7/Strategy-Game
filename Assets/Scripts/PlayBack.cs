@@ -89,7 +89,7 @@ public class PlayBack : MonoBehaviour {
         }
 
         if (seasonsList.Count - 1 == selectedSeason) {
-            troopValueIteration = maxTroopValues-2;
+            troopValueIteration = maxTroopValues-1;
             fullPlayBack = false;
         }
 
@@ -101,12 +101,11 @@ public class PlayBack : MonoBehaviour {
         AnimatePlayBack();
     }
 
-    public void StepBack() {
-        Debug.Log(troopValueIteration);
+    public void StepBack() { //for every troop construct a full game single list path that removes repeats and smoothly animates back and forth
         maxTroopValues = seasonsList[selectedSeason][gameManager.troopArray[0]].Count;
         fullPlayBack = false;
         if (troopValueIteration > 0) {
-            troopValueIteration--;
+            troopValueIteration=0;
 
             foreach (Troop troop in gameManager.troopArray) {
                 List<TroopValues> troopValues = seasonsList[selectedSeason][troop];
@@ -129,10 +128,13 @@ public class PlayBack : MonoBehaviour {
                     }
 
                 }
+                
                 List<Vector3> reversePath = new List<Vector3>();
                 for (int i = troopValues[troopValueIteration].path.Count - 1; i >= 0; i--) {
-                    reversePath.Add(troopValues[troopValueIteration].path[i]);
+                    if (!(troopValues[troopValueIteration].path[i] == transform.position))
+                        reversePath.Add(troopValues[troopValueIteration].path[i]);
                 }
+                
                 if (pathCorrected) {
                     troop.AnimateValues(startingPosition);
                 } else {
@@ -150,13 +152,12 @@ public class PlayBack : MonoBehaviour {
 
 
     public void StepForward() {
-        Debug.Log(troopValueIteration);
         maxTroopValues = seasonsList[selectedSeason][gameManager.troopArray[0]].Count;
         fullPlayBack = false;
-        if ((seasonsList.Count - 1 > selectedSeason && troopValueIteration<maxTroopValues)|| (selectedSeason == seasonsList.Count-1 && troopValueIteration < maxTroopValues-1)) {
+        if (troopValueIteration < maxTroopValues) {
             maxTroopValues = seasonsList[selectedSeason][gameManager.troopArray[0]].Count;
 
-            foreach (Troop troop in gameManager.troopArray) { 
+            foreach (Troop troop in gameManager.troopArray) {
                 List<TroopValues> troopValues = seasonsList[selectedSeason][troop];
                 List<Vector3> correctionPath = new List<Vector3>();
                 List<Vector3> startingPosition = new List<Vector3>();
@@ -174,17 +175,20 @@ public class PlayBack : MonoBehaviour {
                         correctionPath.Add(nextPathEnd);
                         troop.ClearArrows();
                         troop.DrawCorrectionArrows(correctionPath);
+                    } else {
+                        troopValueIteration++;
                     }
 
                 }
                 if (pathCorrected) {
                     troop.AnimateValues(startingPosition);
-                }else {
+                } else {
                     troop.AnimateValues(troopValues[troopValueIteration].path);
                 }
-                
+
             }
                 troopValueIteration++;
+        
         } else {
             if (seasonsList.Count - 1 > selectedSeason) {
                 troopValueIteration = 0;

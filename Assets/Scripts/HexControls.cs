@@ -212,7 +212,7 @@ namespace HexMapTerrain
 
         }
 
-        public void FindConflicts(Troop thisTroop) {
+        public void FindConflicts(Troop thisTroop) {// pass in cell list instead?
             if (thisTroop.GetComponentInParent<Cell>() == graveyard) { return; }
             foreach (Troop thatTroop in gameManager.troopArray) {
                 if (thisTroop != thatTroop) {
@@ -228,20 +228,33 @@ namespace HexMapTerrain
             }
         }
 
+        public bool CheckCellConflicts(Cell cell) {
+            bool cellConflict = false;
+            foreach (Troop troop in gameManager.troopArray) {
+                foreach(Cell otherCell in troop.cellPath) {
+                    if (cell == otherCell)
+                        cellConflict = true;
+                }
+            }
+            return cellConflict;
+        }
+
         public Cell GetRetreatPath(Troop troop, Cell cell) { 
             HexCoordinates coords = hexCalculator.HexFromPosition(cell.transform.position);
             var newCoords = HexUtility.GetInRange(coords, 1);
             Dictionary<int, Vector3> retreatPos = new Dictionary<int, Vector3>();
             foreach (var c in newCoords) {
-                if (!cells[c].GetComponentInChildren<Troop>() && troop.color == TroopColor.Blue && c.Y == coords.Y && c.X < coords.X) {
-                    retreatPos.Add(1, hexCalculator.HexToPosition(c));
-                } else if (!cells[c].GetComponentInChildren<Troop>() && troop.color == TroopColor.Red && c.Y == coords.Y && c.X > coords.X) {
-                    retreatPos.Add(2, hexCalculator.HexToPosition(c));
-                } else if (!cells[c].GetComponentInChildren<Troop>() && troop.color == TroopColor.Blue && c.X < coords.X) {
-                    retreatPos.Add(3, hexCalculator.HexToPosition(c));
-                } else if (!cells[c].GetComponentInChildren<Troop>() && troop.color == TroopColor.Red && c.X > coords.X) {
-                    retreatPos.Add(4, hexCalculator.HexToPosition(c));
-                }  
+                if (!CheckCellConflicts(cells[c])) {
+                    if (!cells[c].GetComponentInChildren<Troop>() && troop.color == gameManager.playerOneColor && c.Y == coords.Y && c.X < coords.X) {
+                        retreatPos.Add(1, hexCalculator.HexToPosition(c));
+                    } else if (!cells[c].GetComponentInChildren<Troop>() && troop.color == gameManager.playerTwoColor && c.Y == coords.Y && c.X > coords.X) {
+                        retreatPos.Add(2, hexCalculator.HexToPosition(c));
+                    } else if (!cells[c].GetComponentInChildren<Troop>() && troop.color == gameManager.playerOneColor && c.X < coords.X) {
+                        retreatPos.Add(3, hexCalculator.HexToPosition(c));
+                    } else if (!cells[c].GetComponentInChildren<Troop>() && troop.color == gameManager.playerTwoColor && c.X > coords.X) {
+                        retreatPos.Add(4, hexCalculator.HexToPosition(c));
+                    }
+                }
             }
             if (retreatPos.ContainsKey(1)) {
                 troop.newPos = retreatPos[1];
