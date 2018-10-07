@@ -1,9 +1,7 @@
-﻿using System.Collections;
+﻿using HexMapTerrain;
+using HexMapTools;
 using System.Collections.Generic;
 using UnityEngine;
-using HexMapTerrain;
-using HexMapTools;
-using UnityEditor;
 
 public enum TroopColor { White = 0, Blue, Red, Purple, Orange, Yellow, Brown, Green }
 
@@ -16,12 +14,12 @@ public class Troop : MonoBehaviour {
     public int basePower; //keep public
     public float attackDistance; //keep public
 
-    private int actionPower; //make private
+    public int actionPower; //make private
 
-    //location and movement
-    public Vector3 currentPos;
-    public Vector3 newPos;
-    public TroopColor color = TroopColor.White;
+    //location and movement (look into making private)
+    public Vector3 currentPos; //keep
+    public Vector3 newPos; //keep
+    public TroopColor color = TroopColor.White; //keep
     private Vector3 direction = new Vector3(0,0,0);
 
     //Support
@@ -29,15 +27,14 @@ public class Troop : MonoBehaviour {
     public Troop supportingTroop;
 
     //Action Turn
-    public HexCoordinates coords;
+    public HexCoordinates coords; //keep this
     public List<Cell> conflictingCells = new List<Cell>();
     public List<Troop> conflictingTroops = new List<Troop>();
-    public List<Cell> cellPath = new List<Cell>();
-    public List<Cell> finalCellPath = new List<Cell>();
-    public List<HexCoordinates> coordPath;
-    public List<HexCoordinates> reviewAnimation;
-    public List<Vector3> vectorPath;
-    public List<Vector3> supportingPositions;
+    public List<Cell> cellPath = new List<Cell>(); //look into redundancy
+    public List<Cell> finalCellPath = new List<Cell>(); //localize this
+    public List<HexCoordinates> coordPath; //look into redundancy
+    public List<Vector3> vectorPath; //look into redundancy
+    public List<Vector3> supportingPositions; //look into making private
 
     //references
     private HexControls hexControls;
@@ -50,13 +47,11 @@ public class Troop : MonoBehaviour {
 
     //action move animation logic
     public bool firstPass = true;
-    private bool moving = true;
     private int moveCounter = 0;
     private Vector3 point;
     private float newPosPoint; 
     private float transformPoint;
-    private List<List<Vector3>> reviewPaths = new List<List<Vector3>>();
-    public int reviewPathNum;
+    private bool isAnimating = false;
 
     private void OnDrawGizmos() {
         if (color == TroopColor.White)
@@ -128,7 +123,8 @@ public class Troop : MonoBehaviour {
     }
 
     private void AnimateTroops() {
-        if (coordPath.Count > 0) {
+        bool moving = true;
+        if (coordPath.Count > 0 && isAnimating) {
             transformPoint = (transform.position.x * direction.x);
             transform.Translate(direction);
 
@@ -160,21 +156,17 @@ public class Troop : MonoBehaviour {
             point = hexCalculator.HexToPosition(coordPath[moveCounter]);
             direction = (point - transform.position) * Time.deltaTime * coordPath.Count;
             newPosPoint = (point.x * direction.x);
+            isAnimating = true;
         }
     }
 
-    private void TroopMoved() {
+    private void TroopMoved() { // calls a TroopMoved function in gamemanager which counts all the moved troops and passes when all troops have moved
+        isAnimating = false;
+        gameManager.TroopFinishedAnimating();
         if (gameManager.turnNum % 4 == 0) {
             transform.SetParent(hexControls.GetCell(coords).transform);
             transform.position = newPos;
-        } else if (reviewPaths.Count > reviewPathNum+1){ //when all troops are done, if season is not up to date, change slider value and auto play
-            Debug.Log(reviewPathNum + " " + reviewPaths.Count);
-            reviewPathNum++;
-            foreach (Vector3 place in reviewPaths[reviewPathNum]) {
-                coordPath.Add(hexCalculator.HexFromPosition(place));
-            }
-            ActionMove();
-        }
+        } 
     }
 
     public void Support(Troop troop) {
@@ -222,13 +214,12 @@ public class Troop : MonoBehaviour {
 
     }
 
-    public bool ActionTurn() { // many functions to rename to avoid confusion later
+    public void PrepareAction() {
         playBack.AddTroopValues(this, vectorPath, supportingTroop,supportingPositions);
         hexControls.FindConflicts(this);
         if (conflictingCells.Count > 0) {
             CutSupport();
         }
-        return ResolveConflicts();
     }
 
     public void CutSupport() { //Move to Troop since it deals with troop properties
@@ -290,11 +281,10 @@ public class Troop : MonoBehaviour {
 
     }
 
-    public void HandleAction() { //Troop because it deals only with troop properties, loop is unnecesary
+    public void HandleAction() { 
 
         conflictingCells.Clear();
 
-        reviewAnimation.Clear();
         hexControls.SetPath(this, finalCellPath);
         if (finalCellPath.Count > 0) {
             newPos = finalCellPath[finalCellPath.Count - 1].transform.position;
@@ -310,34 +300,53 @@ public class Troop : MonoBehaviour {
         currentPos = newPos;
     }
 
-    public void SeasonPlayBack(List<TroopValues> troopReview) { //troopReview contains troopValues which contains [Path, supporting troop]
-        reviewPathNum = 0;
-        foreach (TroopValues troopValue in troopReview) {
-            reviewPaths.Add(troopValue.path);
-        }
-        transform.position = troopReview[0].path[0];
-        if (troopReview[0].path.Count > 1) {
+    public void DrawReviewArrows(TroopValues troopValues) {
+        if (troopValues.path.Count > 1) {
             GetComponent<LineRenderer>().startColor = new Color(.3191082f, 0.7802383f, 0.9528302f);
             GetComponent<LineRenderer>().endColor = new Color(.3191082f, 0.7802383f, 0.9528302f);
-            GetComponent<LineRenderer>().positionCount = troopReview[0].path.Count;
-            for (int i = 0; i < troopReview[0].path.Count; i++) {
-                GetComponent<LineRenderer>().SetPosition(i, troopReview[0].path[i]);
-                if (i > 0) {
-                    coordPath.Add(hexCalculator.HexFromPosition(troopReview[0].path[i]));
-                }
+            GetComponent<LineRenderer>().positionCount = troopValues.path.Count;
+            for (int i = 0; i < troopValues.path.Count; i++) {
+                GetComponent<LineRenderer>().SetPosition(i, troopValues.path[i]);
             }
         }
-        if (troopReview[0].supportingTroop) {
-            GetComponent<LineRenderer>().SetPosition(0, troopReview[0].supportingPositions[0]);
-            GetComponent<LineRenderer>().SetPosition(1, troopReview[0].supportingPositions[1]);
+        if (troopValues.supportingTroop) {
+            GetComponent<LineRenderer>().SetPosition(0, troopValues.supportingPositions[0]);
+            GetComponent<LineRenderer>().SetPosition(1, troopValues.supportingPositions[1]);
         }
     }
 
+    public void DrawCorrectionArrows(List<Vector3> correctionPath) {
+        if (correctionPath.Count > 1) {
+            GetComponent<LineRenderer>().startColor = new Color(0.9339623f, 0.2732842f, 0.03083839f);
+            GetComponent<LineRenderer>().endColor = new Color(0.9339623f, 0.2732842f, 0.03083839f);
+            GetComponent<LineRenderer>().positionCount = correctionPath.Count;
+             for (int i = 0; i < correctionPath.Count; i++) {
+                GetComponent<LineRenderer>().SetPosition(i, correctionPath[i]);
+            }
+        }
+
+    }
+
+    public void AnimateValues(List<Vector3> animationPath) {
+        firstPass = true;
+        for (int i = 0; i < animationPath.Count; i++) {  
+            if (!(i == 0 && animationPath[0] == transform.position))
+                coordPath.Add(hexCalculator.HexFromPosition(animationPath[i]));
+        }
+        ActionMove();
+    }
+
     public void PlayBackReset() {
-        reviewPathNum = 0;
-        reviewPaths.Clear();
         coordPath.Clear();
         direction = new Vector3(0,0,0);
+        GetComponent<LineRenderer>().startColor = new Color(0.2588235f, 0.7254902f, 0.3738212f);
+        GetComponent<LineRenderer>().endColor = new Color(0.2588235f, 0.7254902f, 0.3738212f);
+        for (int i = 0; i < GetComponent<LineRenderer>().positionCount; i++) {
+            GetComponent<LineRenderer>().SetPosition(i, new Vector3(0, 0, 0));
+        }
+    }
+
+    public void ClearArrows() {
         GetComponent<LineRenderer>().startColor = new Color(0.2588235f, 0.7254902f, 0.3738212f);
         GetComponent<LineRenderer>().endColor = new Color(0.2588235f, 0.7254902f, 0.3738212f);
         for (int i = 0; i < GetComponent<LineRenderer>().positionCount; i++) {

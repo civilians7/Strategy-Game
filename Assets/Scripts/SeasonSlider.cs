@@ -21,5 +21,14 @@ public class SeasonSlider : MonoBehaviour {
 
     public void EnterReviewMode() {
         seasonSlider.value = seasonSlider.maxValue;
+        playBack.SeasonSelector(seasonSlider.value);
+    }
+
+    public void Disable() {
+        transform.SetParent(FindObjectOfType<GameManager>().transform);
+    }
+
+    public void Enable() {
+        transform.SetParent(FindObjectOfType<LevelCanvas>().transform);
     }
 }

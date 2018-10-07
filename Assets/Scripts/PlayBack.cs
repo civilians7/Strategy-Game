@@ -11,6 +11,7 @@ public class PlayBack : MonoBehaviour {
     private Slider seasonSlider;
     private GameManager gameManager;
     private SeasonDisplay seasonDisplay;
+    public bool fullPlayBack = false;
 	// Use this for initialization
 	void Start () {
         seasonSlider = FindObjectOfType<SeasonSlider>().GetComponent<Slider>(); 
@@ -43,17 +44,154 @@ public class PlayBack : MonoBehaviour {
         seasonReview[troop].Add(troopValues);
     }
 
-    public void SeasonSelector(float season) {
+    public void SeasonSelector(float season) { //Just set positions
         selectedSeason = (int)season;
         seasonDisplay.SeasonCounter(selectedSeason);
         
         foreach (Troop troop in gameManager.troopArray) {
             troop.PlayBackReset();
-            troop.SeasonPlayBack(seasonsList[selectedSeason][troop]); //passing troopReview to each respective troop
+            troop.transform.position = (seasonsList[selectedSeason][troop][0].path[0]); //passing troopReview to each respective troop
+            troop.DrawReviewArrows(seasonsList[selectedSeason][troop][0]);
         }
     }
 
+    private int maxTroopValues = -1;
+    private int troopValueIteration = 0;
 
+    public void AnimatePlayBack() {
+
+        maxTroopValues = seasonsList[selectedSeason][gameManager.troopArray[0]].Count;
+
+        foreach (Troop troop in gameManager.troopArray) {
+            List<Vector3> correctionPath = new List<Vector3>();
+            bool pathCorrected = false;
+            List<TroopValues> troopValues = seasonsList[selectedSeason][troop];
+            correctionPath.Clear();
+            if (troopValueIteration < maxTroopValues - 1) {
+                List<Vector3> troopPath = seasonsList[selectedSeason][troop][troopValueIteration].path;
+                Vector3 thisPathEnd = troopValues[troopValueIteration].path[troopValues[troopValueIteration].path.Count - 1];
+                Vector3 nextPathEnd = troopValues[troopValueIteration + 1].path[troopValues[troopValueIteration + 1].path.Count - 1];
+
+                if (thisPathEnd != nextPathEnd) {//this works only if path is corrected from starting pos
+                    pathCorrected = true;
+                    correctionPath.Add(troopPath[0]);
+                    correctionPath.Add(nextPathEnd);
+                    troop.ClearArrows();
+                    troop.DrawCorrectionArrows(correctionPath);
+                }
+
+            }
+            if (pathCorrected) {
+                troop.AnimateValues(correctionPath);
+            } else {
+                troop.AnimateValues(troopValues[0].path);
+            }
+        }
+
+        if (seasonsList.Count - 1 == selectedSeason) {
+            troopValueIteration = maxTroopValues-2;
+            fullPlayBack = false;
+        }
+
+    }
+
+    public void FullPlay() {
+        fullPlayBack = !fullPlayBack;
+        if (!fullPlayBack) { return; }
+        AnimatePlayBack();
+    }
+
+    public void StepBack() {
+        Debug.Log(troopValueIteration);
+        maxTroopValues = seasonsList[selectedSeason][gameManager.troopArray[0]].Count;
+        fullPlayBack = false;
+        if (troopValueIteration > 0) {
+            troopValueIteration--;
+
+            foreach (Troop troop in gameManager.troopArray) {
+                List<TroopValues> troopValues = seasonsList[selectedSeason][troop];
+                List<Vector3> correctionPath = new List<Vector3>();
+                List<Vector3> startingPosition = new List<Vector3>();
+                startingPosition.Clear();
+                correctionPath.Clear();
+                bool pathCorrected = false;
+                if (troopValueIteration < maxTroopValues - 1) {
+                    List<Vector3> troopPath = seasonsList[selectedSeason][troop][troopValueIteration].path;
+                    Vector3 thisPathEnd = troopValues[troopValueIteration].path[troopValues[troopValueIteration].path.Count - 1];
+                    Vector3 nextPathEnd = troopValues[troopValueIteration + 1].path[troopValues[troopValueIteration + 1].path.Count - 1];
+                    startingPosition.Add(troopPath[0]);
+                    if (thisPathEnd != nextPathEnd) {//this works only if path is corrected from starting pos
+                        pathCorrected = true;
+                        correctionPath.Add(troopPath[0]);
+                        correctionPath.Add(nextPathEnd);
+                        troop.ClearArrows();
+                        troop.DrawCorrectionArrows(correctionPath);
+                    }
+
+                }
+                List<Vector3> reversePath = new List<Vector3>();
+                for (int i = troopValues[troopValueIteration].path.Count - 1; i >= 0; i--) {
+                    reversePath.Add(troopValues[troopValueIteration].path[i]);
+                }
+                if (pathCorrected) {
+                    troop.AnimateValues(startingPosition);
+                } else {
+                    troop.AnimateValues(reversePath);
+                }
+
+            }
+
+        } else if (selectedSeason > 0) {
+            seasonSlider.value--;
+            troopValueIteration = maxTroopValues;
+        }
+
+    }
+
+
+    public void StepForward() {
+        Debug.Log(troopValueIteration);
+        maxTroopValues = seasonsList[selectedSeason][gameManager.troopArray[0]].Count;
+        fullPlayBack = false;
+        if ((seasonsList.Count - 1 > selectedSeason && troopValueIteration<maxTroopValues)|| (selectedSeason == seasonsList.Count-1 && troopValueIteration < maxTroopValues-1)) {
+            maxTroopValues = seasonsList[selectedSeason][gameManager.troopArray[0]].Count;
+
+            foreach (Troop troop in gameManager.troopArray) { 
+                List<TroopValues> troopValues = seasonsList[selectedSeason][troop];
+                List<Vector3> correctionPath = new List<Vector3>();
+                List<Vector3> startingPosition = new List<Vector3>();
+                startingPosition.Clear();
+                correctionPath.Clear();
+                bool pathCorrected = false;
+                if (troopValueIteration < maxTroopValues - 1) {
+                    List<Vector3> troopPath = seasonsList[selectedSeason][troop][troopValueIteration].path;
+                    Vector3 thisPathEnd = troopValues[troopValueIteration].path[troopValues[troopValueIteration].path.Count - 1];
+                    Vector3 nextPathEnd = troopValues[troopValueIteration + 1].path[troopValues[troopValueIteration + 1].path.Count - 1];
+                    startingPosition.Add(troopPath[0]);
+                    if (thisPathEnd != nextPathEnd) {//this works only if path is corrected from starting pos
+                        pathCorrected = true;
+                        correctionPath.Add(troopPath[0]);
+                        correctionPath.Add(nextPathEnd);
+                        troop.ClearArrows();
+                        troop.DrawCorrectionArrows(correctionPath);
+                    }
+
+                }
+                if (pathCorrected) {
+                    troop.AnimateValues(startingPosition);
+                }else {
+                    troop.AnimateValues(troopValues[troopValueIteration].path);
+                }
+                
+            }
+                troopValueIteration++;
+        } else {
+            if (seasonsList.Count - 1 > selectedSeason) {
+                troopValueIteration = 0;
+                seasonSlider.value++;
+            } 
+        }
+    }
 }
 
 public class TroopValues {
@@ -61,7 +199,7 @@ public class TroopValues {
     public Troop supportingTroop;
     public List<Vector3> supportingPositions = new List<Vector3>();
 
-    public TroopValues(List<Vector3> path, Troop troop, List<Vector3> supportingPositions) { 
+    public TroopValues(List<Vector3> path, Troop troop, List<Vector3> supportingPositions) {
         this.path = path;
         this.supportingTroop = troop;
         this.supportingPositions = supportingPositions;

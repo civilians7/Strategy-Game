@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using HexMapTerrain;
+using UnityEngine.UI;
 
 //center of the archetecture, handles comunication between other classes and handles most of the game engine logic
 
@@ -18,6 +19,7 @@ public class GameManager : MonoBehaviour {
     private HexControls hexControls;
     private ReviewButton reviewButton;
     private PlayerColors playerColors;
+    private SeasonSlider seasonSlider;
     private int roundNum;
 
     // Use this for initialization
@@ -28,6 +30,7 @@ public class GameManager : MonoBehaviour {
         hexControls = FindObjectOfType<HexControls>();
         reviewButton = FindObjectOfType<ReviewButton>();
         playBack = FindObjectOfType<PlayBack>();
+        seasonSlider = FindObjectOfType<SeasonSlider>();
         reviewButton.Disable();
         playerColors = FindObjectOfType<PlayerColors>();
         foreach (PlayBackDisplay display in playBackDisplay) {
@@ -55,16 +58,18 @@ public class GameManager : MonoBehaviour {
             turnDisplay.Disable();
             seasonDisplay.Disable();
             hexControls.ChangePlayer(TroopColor.White);
+
+            foreach (Troop troop in troopArray) { 
+                hexControls.FindPath(troop);
+            }
             int i = 0;
             do {
                 conflictSolved = false;
-                foreach (Troop troop in troopArray) { // Just do this before the loop?
-                    if (i == 0) {
-                        hexControls.FindPath(troop);
-                    }
+                foreach (Troop troop in troopArray) {
+                    troop.PrepareAction();
                 }
                 foreach (Troop troop in troopArray) {
-                    if (troop.ActionTurn()) {
+                    if (troop.ResolveConflicts()) {
                         conflictSolved = true;
                     }
                     troop.conflictingCells.Clear();
@@ -112,13 +117,15 @@ public class GameManager : MonoBehaviour {
     }
 
     public void TogglePlaybackMode() {
-        FindObjectOfType<SeasonSlider>().EnterReviewMode();
         playBackMode = !playBackMode;
         if (playBackMode) { //turn on playback
+            FindObjectOfType<SeasonSlider>().EnterReviewMode();
             turnDisplay.Disable();
             foreach (PlayBackDisplay display in playBackDisplay) {
                 display.Enable();
             }
+            if (roundNum == 1)
+                seasonSlider.Disable();
         } else { // turn off playback
             turnDisplay.Enable();
             foreach(Troop troop in troopArray) {
@@ -131,12 +138,18 @@ public class GameManager : MonoBehaviour {
         }
     }
 
-    public void AnimatePlayBack() {
-        Debug.Log("Animating Playback");
-        foreach (Troop troop in troopArray) {// possibly allow specific selected troops in the future
-            troop.firstPass = true;
-            troop.reviewPathNum = 0;
-            troop.ActionMove();
+    int numOfTroopsFinished = 0;
+    public void TroopFinishedAnimating() {
+        int numOfTroops = troopArray.Length;
+        numOfTroopsFinished++;
+        if (numOfTroopsFinished == numOfTroops) {
+            numOfTroopsFinished = 0;
+            if (turnNum % 4 == 0) {
+                EnableDisplays();
+            } else if (playBack.fullPlayBack){
+                seasonSlider.GetComponent<Slider>().value++;
+                playBack.AnimatePlayBack();
+            }
         }
     }
 }

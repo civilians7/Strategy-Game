@@ -5,7 +5,7 @@ using UnityEngine;
 public class SetTroopColor : MonoBehaviour {
     private Animator animator;
 	// Use this for initialization
-	void Start () {
+	void Awake () {
 		animator = GetComponent<Animator>();
 	}
 	

@@ -20,9 +20,15 @@ private SetTroopColor[] troops;
         mainSlider.onValueChanged.AddListener(delegate { ValueChangedCheck(); });
         playerColors = FindObjectOfType<PlayerColors>();
         troopColor = TroopColor.Blue;
+        mainSlider.value = 1;
+        ChooseColor();
 	}
 
     public void ValueChangedCheck() { // or on scene loaded
+        ChooseColor();
+    }
+
+    private void ChooseColor() {
         foreach (SetTroopColor troop in troops) {
             troop.SetColor((int)mainSlider.value);
         }
@@ -43,11 +49,10 @@ private SetTroopColor[] troops;
         if (SceneManager.GetActiveScene().name.Equals("01c Color Selector P2") && troopColor == playerColors.playerOne) {
             colorTaken.GetComponent<Text>().color = new Color(1, 1, 1, 1);
             startButton.transform.SetParent(FindObjectOfType<PlayerColors>().transform);
-        } else if(SceneManager.GetActiveScene().name.Equals("01c Color Selector P2")){
+        } else if (SceneManager.GetActiveScene().name.Equals("01c Color Selector P2")) {
             colorTaken.GetComponent<Text>().color = new Color(1, 1, 1, 0);
             startButton.transform.SetParent(FindObjectOfType<LevelCanvas>().transform);
         }
-        Debug.Log(SceneManager.GetActiveScene().name);
         if (SceneManager.GetActiveScene().name.Equals("01c Color Selector P1")) {
             playerColors.playerOne = troopColor;
         } else {

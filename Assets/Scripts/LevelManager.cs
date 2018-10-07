@@ -8,21 +8,21 @@ public class LevelManager : MonoBehaviour {
 
     void Start() {
         if (autoLoadNextLevelAfter <= 0) {
-            Debug.Log("Level auto load disabled, use a positive number in seconds");
-        } else { 
+            //Debug.Log("Level auto load disabled, use a positive number in seconds");
+        } else {
             Invoke("LoadNextLevel", autoLoadNextLevelAfter);
         }
     }
 
-	public void LoadLevel(string name){
-		Debug.Log ("New Level load: " + name);
+    public void LoadLevel(string name) {
+        //Debug.Log("New Level load: " + name);
         SceneManager.LoadScene(name);
-	}
+    }
 
-	public void QuitRequest(){
-		Debug.Log ("Quit requested");
-		Application.Quit ();
-	}
+    public void QuitRequest() {
+        Debug.Log("Quit requested");
+        Application.Quit();
+    }
 
     public void LoadNextLevel() {
         Scene activeScene = SceneManager.GetActiveScene();
