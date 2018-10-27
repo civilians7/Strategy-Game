@@ -27,8 +27,8 @@ namespace HexMapTerrain {
 
             Cell cell = cells[b];
 
-            foreach (Troop troop in gameManager.troopArray)
-                if ((cell == null || cell.transform.position == troop.transform.position))
+            
+            if (cell == null)
                     return float.PositiveInfinity;
 
             return 1;

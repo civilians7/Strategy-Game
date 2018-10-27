@@ -13,6 +13,7 @@ public class Troop : MonoBehaviour {
     public int movement; //keep public
     public int basePower; //keep public
     public float attackDistance; //keep public
+    public int player;
 
     public int actionPower; //make private
 
@@ -42,7 +43,6 @@ public class Troop : MonoBehaviour {
     private Animator animator;
     private PlayBack playBack;
     public GameObject movementArrow;
-    private PlayerColors playerColors;
     private GameManager gameManager;
 
     //action move animation logic
@@ -94,28 +94,16 @@ public class Troop : MonoBehaviour {
         hexCalculator = hexGrid.HexCalculator;
         playBack = FindObjectOfType<PlayBack>();
         actionPower = basePower;
-        playerColors = FindObjectOfType<PlayerColors>();
         gameManager = FindObjectOfType<GameManager>();
+        if (FindObjectOfType<PlayerColors>()) {
+            if (player == 1)
+                color = FindObjectOfType<PlayerColors>().playerOne;
+            else if (player == 2)
+                color = FindObjectOfType<PlayerColors>().playerTwo;
+        } 
 
-        if (color == TroopColor.Blue)
-            color = playerColors.playerOne;
-        else if (color == TroopColor.Red)
-            color = playerColors.playerTwo;
+        animator.SetInteger("Color", (int)color);
 
-        if (color == TroopColor.Blue)
-            animator.SetInteger("Color", 1);
-        else if (color == TroopColor.Red)
-            animator.SetInteger("Color", 2);
-        else if (color == TroopColor.Purple)
-            animator.SetInteger("Color", 3);
-        else if (color == TroopColor.Orange)
-            animator.SetInteger("Color", 4);
-        else if (color == TroopColor.Yellow)
-            animator.SetInteger("Color", 5);
-        else if (color == TroopColor.Brown)
-            animator.SetInteger("Color", 6);
-        else if (color == TroopColor.Green)
-            animator.SetInteger("Color", 7);
     }
     void Update() {
         coords = hexCalculator.HexFromPosition(transform.position);
@@ -166,6 +154,7 @@ public class Troop : MonoBehaviour {
         if (gameManager.turnNum % 4 == 0) {
             transform.SetParent(hexControls.GetCell(coords).transform);
             transform.position = newPos;
+            gameManager.CheckGameOver();
         } 
     }
 
@@ -217,8 +206,20 @@ public class Troop : MonoBehaviour {
     public void PrepareAction() {
         playBack.AddTroopValues(this, vectorPath, supportingTroop,supportingPositions);
         hexControls.FindConflicts(this);
-        if (conflictingCells.Count > 0) {
-            CutSupport();
+        CheckCutSupport();
+    }
+
+    public void CheckCutSupport() { //Checks if troop looses its support
+        if (!supportingTroop) { return; }
+        bool keepSupport = true;
+        if (conflictingTroops.Count > 0 ) {
+            foreach (Troop troop in conflictingTroops) {
+                if (!supportingTroop.conflictingTroops.Contains(troop)) {
+                    keepSupport = false;
+                }
+            }
+            if (!keepSupport)
+                CutSupport();
         }
     }
 
@@ -229,6 +230,11 @@ public class Troop : MonoBehaviour {
             supportingTroop = null;
         }
     }
+
+    private void OnCollisionEnter2D(Collision2D collision) {
+        Debug.Log("Collision");
+    }
+
     public bool ResolveConflicts() {
         bool conflictSolved = false;
         bool pathStopped = false;
@@ -242,8 +248,13 @@ public class Troop : MonoBehaviour {
                         if (conflictingCells[x] == GetComponentInParent<Cell>()) { // Troop is attacked by enemy and is forced to retreat
                             if (conflictingTroops[x].actionPower > actionPower) {                               
                                 if (GetComponent<HQ>()) { //Handle End Game Condition
-                                    Debug.LogWarning("Game Over! " + conflictingTroops[x].color + " wins!");
                                     transform.position = hexControls.graveyard.transform.position;
+                                    if (gameManager.gameOver) {
+                                        gameManager.tieBreaker = true;
+                                    } else {
+                                        gameManager.gameOver = true;
+                                        gameManager.winner = conflictingTroops[x].color;
+                                    }
                                 } else {
                                     conflictSolved = true;
                                     Cell retreatCell = hexControls.GetRetreatPath(this, conflictingCells[x]);
@@ -284,6 +295,7 @@ public class Troop : MonoBehaviour {
     public void HandleAction() { 
 
         conflictingCells.Clear();
+        conflictingTroops.Clear();
 
         hexControls.SetPath(this, finalCellPath);
         if (finalCellPath.Count > 0) {

@@ -15,31 +15,42 @@ public class GameManager : MonoBehaviour {
     private PlayBack playBack;
     private TurnDisplay turnDisplay;
     private SeasonDisplay seasonDisplay;
-    private PlayBackDisplay[] playBackDisplay;
+    private PlayBackDisplay playBackDisplay;
+    private GameOverDisplay gameOverDisplay;
     private HexControls hexControls;
     private ReviewButton reviewButton;
     private PlayerColors playerColors;
     private SeasonSlider seasonSlider;
+    private LevelManager levelManager;
     private int roundNum;
-    public TroopColor playerOneColor;
-    public TroopColor playerTwoColor;
+    public TroopColor playerOneColor = TroopColor.Blue;
+    public TroopColor playerTwoColor = TroopColor.Red;
+    public TroopColor winner;
+    public bool tieBreaker = false;
+    public bool gameOver = false;
 
     // Use this for initialization
     void Start() {
         turnDisplay = FindObjectOfType<TurnDisplay>();
         seasonDisplay = FindObjectOfType<SeasonDisplay>();
-        playBackDisplay = FindObjectsOfType<PlayBackDisplay>();
+        playBackDisplay = FindObjectOfType<PlayBackDisplay>();
+        gameOverDisplay = FindObjectOfType<GameOverDisplay>();
         hexControls = FindObjectOfType<HexControls>();
         reviewButton = FindObjectOfType<ReviewButton>();
         playBack = FindObjectOfType<PlayBack>();
         seasonSlider = FindObjectOfType<SeasonSlider>();
-        reviewButton.Disable();
+        levelManager = FindObjectOfType<LevelManager>();
         playerColors = FindObjectOfType<PlayerColors>();
-        playerOneColor = playerColors.playerOne;
-        playerTwoColor = playerColors.playerTwo;
-        foreach (PlayBackDisplay display in playBackDisplay) {
-            display.Disable();
+
+        if (playerColors) {
+            playerOneColor = playerColors.playerOne;
+            playerTwoColor = playerColors.playerTwo;
         }
+        
+        playBackDisplay.Disable();
+        reviewButton.Disable();
+        gameOverDisplay.GetComponent<Text>().text = "";
+        
     }
 
     void Update() {
@@ -47,12 +58,16 @@ public class GameManager : MonoBehaviour {
     }
 
     public void EndTurn() { //rename and clean up /refactor / comment code
+        if (gameOver) {
+            levelManager.LoadLevel("01a Start");
+            return;
+        }
         turnNum++;
         troopArray = FindObjectsOfType<Troop>();
         hexControls.planningMode = false;
         hexControls.DeselectCell();
 
-        if (turnNum%4 == 0) {
+        if (turnNum % 4 == 0) {
             roundNum++;
             playBack.CreateNewSeason();
             bool conflictSolved = false;
@@ -63,7 +78,7 @@ public class GameManager : MonoBehaviour {
             seasonDisplay.Disable();
             hexControls.ChangePlayer(TroopColor.White);
 
-            foreach (Troop troop in troopArray) { 
+            foreach (Troop troop in troopArray) {
                 hexControls.FindPath(troop);
             }
             int i = 0;
@@ -87,14 +102,14 @@ public class GameManager : MonoBehaviour {
             }
             Invoke("EnableDisplays", 1);
 
-        } else if (turnNum%4 == 1) {
-            if (roundNum > 0) {reviewButton.Enable(); }
+        } else if (turnNum % 4 == 1) {
+            if (roundNum > 0) { reviewButton.Enable(); }
             turnDisplay.SetText("Finish Turn");
-            hexControls.ChangePlayer(playerColors.playerOne);
-        } else if (turnNum%4 == 2) {
-            hexControls.ChangePlayer(playerColors.playerTwo);
+            hexControls.ChangePlayer(playerOneColor);
+        } else if (turnNum % 4 == 2) {
+            hexControls.ChangePlayer(playerTwoColor);
 
-        } else if (turnNum%4 == 3) {
+        } else if (turnNum % 4 == 3) {
             turnDisplay.SetText("Ready?");
             hexControls.ChangePlayer(TroopColor.White);
         }
@@ -103,7 +118,7 @@ public class GameManager : MonoBehaviour {
             thisTroop.GetComponent<LineRenderer>().SetPosition(0, new Vector3(0, 0, 0));
             thisTroop.GetComponent<LineRenderer>().SetPosition(1, new Vector3(0, 0, 0));
             thisTroop.firstPass = true;
-            if (turnNum%4 != 0 && thisTroop.currentPos != thisTroop.transform.position) {
+            if (turnNum % 4 != 0 && thisTroop.currentPos != thisTroop.transform.position) {
                 thisTroop.newPos = thisTroop.transform.position;
                 thisTroop.transform.position = thisTroop.currentPos;
 
@@ -124,21 +139,19 @@ public class GameManager : MonoBehaviour {
         playBackMode = !playBackMode;
         if (playBackMode) { //turn on playback
             FindObjectOfType<SeasonSlider>().EnterReviewMode();
+            gameOverDisplay.Disable();
             turnDisplay.Disable();
-            foreach (PlayBackDisplay display in playBackDisplay) {
-                display.Enable();
-            }
+            playBackDisplay.Enable();
             if (roundNum == 1)
                 seasonSlider.Disable();
         } else { // turn off playback
+            gameOverDisplay.Enable();
             turnDisplay.Enable();
-            foreach(Troop troop in troopArray) {
+            foreach (Troop troop in troopArray) {
                 troop.PlayBackReset();
                 troop.transform.position = troop.currentPos;
             }
-            foreach (PlayBackDisplay display in playBackDisplay) {
-                display.Disable();
-            }
+            playBackDisplay.Disable();
         }
     }
 
@@ -150,10 +163,43 @@ public class GameManager : MonoBehaviour {
             numOfTroopsFinished = 0;
             if (turnNum % 4 == 0) {
                 EnableDisplays();
-            } else if (playBack.fullPlayBack){
+            } else if (playBack.fullPlayBack) {
                 seasonSlider.GetComponent<Slider>().value++;
                 playBack.AnimatePlayBack();
             }
         }
     }
+
+    public void CheckGameOver() {
+        if (gameOver) {
+            if (tieBreaker) {
+                HandleTieBreaker();
+            } else {
+                HandleGameOver();
+            }
+        }
+    }
+
+    private void HandleTieBreaker() { //check which player has more power in enemy territory, that player wins
+        int[] powerInEnemy = new int[2]; //make this variable later (count of players)
+        foreach (Troop troop in troopArray) {
+            if (troop.player != troop.GetComponentInParent<Cell>().playerTerritory) { //do this after each season
+                powerInEnemy[troop.player - 1] += troop.basePower;
+            }
+        }
+        if (powerInEnemy[0] > powerInEnemy[1]) {
+            winner = playerOneColor;
+        } else {
+            winner = playerTwoColor;
+        }
+        HandleGameOver();
+    }
+
+    private void HandleGameOver() {
+        gameOverDisplay.GetComponent<Text>().text = winner + " Wins!";
+        turnDisplay.SetText("Exit to Menu");
+        hexControls.HandleWin(winner);
+        reviewButton.Enable();
+    }
+
 }

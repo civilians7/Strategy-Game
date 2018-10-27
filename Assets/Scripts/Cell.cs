@@ -5,8 +5,6 @@ using System.Collections.Generic;
 namespace HexMapTerrain
 {
 
-    //public enum CellColor { White = 0, Blue, Red, Purple, Orange, Yellow, Brown, Green }
-
     [RequireComponent(typeof(Animator))]
     public class Cell : MonoBehaviour
     {
@@ -21,6 +19,8 @@ namespace HexMapTerrain
         private List<Cell> neighborCells = new List<Cell>();
         public Color color;
         public float alpha = .5f;
+        public int playerTerritory;
+        private bool colorSet = false;
         
         private void Start() {
             cells = new HexContainer<Cell>(GetComponentInParent<HexGrid>());
@@ -37,8 +37,25 @@ namespace HexMapTerrain
 
         private void Update() {
             if (neighborCoords.Length > 0) {
-                SetColor();
+                if (colorSet) {
+                    SetColor();
+                } else {
+                    SetStartColor();
+                }
             }
+        }
+
+        private void SetStartColor() {;
+            foreach (HQ hq in FindObjectsOfType<HQ>()) {
+                if (hq.GetComponent<Troop>().player == playerTerritory) {
+                    if (hq.GetComponent<SpriteRenderer>().color != new Color(1, 1, 1, 1)) {
+                        colorSet = true;
+                    }
+                    color = hq.GetComponent<SpriteRenderer>().color;
+                    color.a = alpha;
+                }
+            }
+            GetComponent<SpriteRenderer>().color = color;
         }
 
         private void SetColor() {
@@ -49,6 +66,7 @@ namespace HexMapTerrain
                 color = GetComponentInChildren<Troop>().GetComponent<SpriteRenderer>().color;
                 color.a = alpha;
             } else {
+                cellColors.Add(GetComponent<SpriteRenderer>().color,1);
                 foreach (Cell cell in neighborCells) {
                     if (cell) {
                         if (!cellColors.ContainsKey(cell.color)) {

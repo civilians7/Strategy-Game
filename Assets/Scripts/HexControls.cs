@@ -71,9 +71,8 @@ namespace HexMapTerrain
             if (player == TroopColor.White)
                 return;
             if (gameManager.playBackMode) {
-
-            } else {
-                //Move or select cell
+                //Add Review Mode Functionality later
+            } else { //Move or select cell
                 if (!selectedTroop) {
                     SelectCell(cellCoords);
                 }
@@ -99,13 +98,9 @@ namespace HexMapTerrain
 
         }
 
-        public void HandleWin(TroopColor color) //Call from GameManager when game is over
+        public void HandleWin(TroopColor winner) //Call from GameManager when game is over
         {
-
-
-            TroopColor winner = TroopColor.White;
-
-            print("Game over! " + color + " Wins!");
+            player = TroopColor.White;
             cameraAnimator.SetInteger("Player", (int)winner);
 
         }
@@ -187,13 +182,10 @@ namespace HexMapTerrain
         }
 
         public float HexCost(HexCoordinates a, HexCoordinates b) {
-
             Cell cell = cells[b];
 
-            foreach (Troop troop in gameManager.troopArray)
-                if ((cell == null || cell.transform.position == troop.transform.position))
-                    return float.PositiveInfinity;
-
+            if (cell == null)
+                return float.PositiveInfinity;
             return 1;
         }
 
