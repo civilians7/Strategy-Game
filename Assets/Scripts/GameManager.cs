@@ -28,6 +28,7 @@ public class GameManager : MonoBehaviour {
     public TroopColor winner;
     public bool tieBreaker = false;
     public bool gameOver = false;
+    public Text[] PlayerScores = new Text[2];
 
     // Use this for initialization
     void Start() {
@@ -70,37 +71,13 @@ public class GameManager : MonoBehaviour {
         if (turnNum % 4 == 0) {
             roundNum++;
             playBack.CreateNewSeason();
-            bool conflictSolved = false;
             seasonDisplay.SeasonCounter(roundNum);
             turnDisplay.SetText("Next Season");
             reviewButton.Disable();
             turnDisplay.Disable();
             seasonDisplay.Disable();
             hexControls.ChangePlayer(TroopColor.White);
-
-            foreach (Troop troop in troopArray) {
-                hexControls.FindPath(troop);
-            }
-            int i = 0;
-            do {
-                conflictSolved = false;
-                foreach (Troop troop in troopArray) {
-                    troop.PrepareAction();
-                }
-                foreach (Troop troop in troopArray) {
-                    if (troop.ResolveConflicts()) {
-                        conflictSolved = true;
-                    }
-                    troop.conflictingCells.Clear();
-                    troop.conflictingTroops.Clear();
-                }
-                i++;
-                if (i == 5) { Debug.LogWarning("Action Turn Looped 5 times"); }
-            } while (conflictSolved && i < 5);
-            foreach (Troop troop in troopArray) {
-                troop.HandleAction();
-            }
-            Invoke("EnableDisplays", 1);
+            StartActionPhase();
 
         } else if (turnNum % 4 == 1) {
             if (roundNum > 0) { reviewButton.Enable(); }
@@ -128,6 +105,31 @@ public class GameManager : MonoBehaviour {
             }
         }
         hexControls.planningMode = true;
+    }
+
+    private void StartActionPhase() {
+        bool conflictSolved = false;
+        foreach (Troop troop in troopArray) {
+            hexControls.FindPath(troop);
+        }
+        int i = 0;
+        do {
+            conflictSolved = false;
+            foreach (Troop troop in troopArray) {
+                troop.PrepareAction();
+                hexControls.FindConflicts(troop, i);
+            }
+            foreach (Troop troop in troopArray) {
+                conflictSolved = troop.ResolveConflicts(i);
+                troop.conflictingCells.Clear();
+                troop.conflictingTroops.Clear();
+            }
+            i++;
+            if (i == 5) { Debug.LogWarning("Action Turn Looped 5 times"); }
+        } while (conflictSolved && i < 5); 
+        foreach (Troop troop in troopArray) {
+            troop.HandleAction();
+        }
     }
 
     private void EnableDisplays() {
@@ -163,11 +165,23 @@ public class GameManager : MonoBehaviour {
             numOfTroopsFinished = 0;
             if (turnNum % 4 == 0) {
                 EnableDisplays();
+                CalculatePowerScores();
             } else if (playBack.fullPlayBack) {
                 seasonSlider.GetComponent<Slider>().value++;
                 playBack.AnimatePlayBack();
             }
         }
+    }
+
+    void CalculatePowerScores() {
+        int[] powerInEnemy = new int[2]; //make this variable later (count of players)
+        foreach (Troop troop in troopArray) {
+            if (troop.player != troop.GetComponentInParent<Cell>().playerTerritory) { //do this after each season
+                powerInEnemy[troop.player - 1] += troop.basePower;
+            }
+        }
+        PlayerScores[0].text = powerInEnemy[0].ToString();
+        PlayerScores[1].text = powerInEnemy[1].ToString();
     }
 
     public void CheckGameOver() {

@@ -204,17 +204,25 @@ namespace HexMapTerrain
 
         }
 
-        public void FindConflicts(Troop thisTroop) {// pass in cell list instead?
+        public void FindConflicts(Troop thisTroop, int i) {// pass in cell list instead? //pass in only two cells, the current cell and the next cell
             if (thisTroop.GetComponentInParent<Cell>() == graveyard) { return; }
+            HexCoordinates currentPos; 
+            HexCoordinates nextPos;
+            nextPos = thisTroop.coordPath[i];
+            currentPos = thisTroop.coordPath[i - 1];
             foreach (Troop thatTroop in gameManager.troopArray) {
+                HexCoordinates thatCurrentPos;
+                HexCoordinates thatNextPos;
+                thatNextPos = thatTroop.coordPath[i];
+                thatCurrentPos = thatTroop.coordPath[i - 1];
                 if (thisTroop != thatTroop) {
-                    foreach (HexCoordinates thisPath in thisTroop.coordPath) {
-                        foreach (HexCoordinates thatPath in thatTroop.coordPath) {
-                            if ((thisTroop.transform.position == thatTroop.transform.position || thisPath == thatPath)) {
-                                    thisTroop.conflictingCells.Add(cells[thisPath]);
-                                    thisTroop.conflictingTroops.Add(thatTroop);
-                            }
-                        }
+                    if ((currentPos == thatNextPos)) {
+                        thisTroop.conflictingCells.Add(cells[currentPos]);
+                        thisTroop.conflictingTroops.Add(thatTroop);
+                    }
+                    if (nextPos == thatNextPos || nextPos == thatCurrentPos) {
+                        thisTroop.conflictingCells.Add(cells[nextPos]);
+                        thisTroop.conflictingTroops.Add(thatTroop);
                     }
                 }
             }

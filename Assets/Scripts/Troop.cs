@@ -10,25 +10,25 @@ public class Troop : MonoBehaviour {
     //Comments should describe "Why" | "What" should be clear from the code
 
     //game variables
-    public int movement; //keep public
-    public int basePower; //keep public
-    public float attackDistance; //keep public
+    public int movement; //keep public move to units
+    public int basePower; //keep public move to units
+    public float attackDistance; //keep public move to units
     public int player;
 
-    public int actionPower; //make private
+    public int actionPower; //make private keep
 
     //location and movement (look into making private)
-    public Vector3 currentPos; //keep
-    public Vector3 newPos; //keep
-    public TroopColor color = TroopColor.White; //keep
-    private Vector3 direction = new Vector3(0,0,0);
+    public Vector3 currentPos; //keep move to units
+    public Vector3 newPos; //keep move to units
+    public TroopColor color = TroopColor.White; //keep moove to units
+    private Vector3 direction = new Vector3(0,0,0); // move to units
 
     //Support
-    public List<Troop> supportedByTroops = new List<Troop>(); //privatize both of these
-    public Troop supportingTroop;
+    public List<Troop> supportedByTroops = new List<Troop>(); //privatize both of these keep
+    public Troop supportingTroop;//keep
 
     //Action Turn
-    public HexCoordinates coords; //keep this
+    public HexCoordinates coords; //keep this keep hex stuff
     public List<Cell> conflictingCells = new List<Cell>();
     public List<Troop> conflictingTroops = new List<Troop>();
     public List<Cell> cellPath = new List<Cell>(); //look into redundancy
@@ -57,7 +57,7 @@ public class Troop : MonoBehaviour {
         if (color == TroopColor.White)
             return;
 
-        if (color == TroopColor.Red)
+        if (color == TroopColor.Red) //possibly move to Units
             Gizmos.color = Color.red;
         else if (color == TroopColor.Blue)
             Gizmos.color = Color.blue;
@@ -75,7 +75,7 @@ public class Troop : MonoBehaviour {
         Gizmos.DrawWireSphere(transform.position, 0.433f);
     }
 
-    void OnMouseDown() {
+    void OnMouseDown() { //move to units
         if (hexControls.selectedTroop == this) {
             hexControls.DeselectCell();
         } else {
@@ -205,7 +205,6 @@ public class Troop : MonoBehaviour {
 
     public void PrepareAction() {
         playBack.AddTroopValues(this, vectorPath, supportingTroop,supportingPositions);
-        hexControls.FindConflicts(this);
         CheckCutSupport();
     }
 
@@ -235,7 +234,7 @@ public class Troop : MonoBehaviour {
         Debug.Log("Collision");
     }
 
-    public bool ResolveConflicts() {
+    public bool ResolveConflicts(int itteration) {
         bool conflictSolved = false;
         bool pathStopped = false;
         for (int i = 0; i < cellPath.Count; i++) { // loop through animation path and check for the conflict cells
@@ -246,7 +245,7 @@ public class Troop : MonoBehaviour {
                     if (cellPath[i] == conflictingCells[x]) {
                         emptySpace = false;
                         if (conflictingCells[x] == GetComponentInParent<Cell>()) { // Troop is attacked by enemy and is forced to retreat
-                            if (conflictingTroops[x].actionPower > actionPower) {                               
+                            if (conflictingTroops[x].actionPower > actionPower && conflictingTroops[x].color != color) {                               
                                 if (GetComponent<HQ>()) { //Handle End Game Condition
                                     transform.position = hexControls.graveyard.transform.position;
                                     if (gameManager.gameOver) {
@@ -266,14 +265,17 @@ public class Troop : MonoBehaviour {
                                     }
                                 }
                             }
-                        } else if (conflictingTroops[x].actionPower < actionPower) { //  Troop attacks enemy troop and moves into the space
+                        } else if (conflictingTroops[x].actionPower < actionPower && conflictingTroops[x].color != color) { //  Troop attacks enemy troop and moves into the space
                             if (!finalCellPath.Contains(conflictingCells[x])) { //This is just a temporary hack, look into problem more later (when target is destroyed it loops all the way to the end)
                                 finalCellPath.Add(conflictingCells[x]);
                                 conflictSolved = true;
+                                pathStopped = true;
                             }
                         } else if (conflictingTroops[x].actionPower >= actionPower) { // Troop is unable to move
                             pathStopped = true;
-                        }
+                        } else if (conflictingTroops[x].actionPower < actionPower && conflictingTroops[x].color == color) {
+                            pathStopped = true;
+                        } 
                     }
                 }
 
