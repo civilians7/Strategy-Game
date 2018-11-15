@@ -29,8 +29,8 @@ public class Troop : MonoBehaviour {
 
     //Action Turn
     public HexCoordinates coords; //keep this keep hex stuff
-    public List<Cell> conflictingCells = new List<Cell>();
-    public List<Troop> conflictingTroops = new List<Troop>();
+    public Cell conflictingCell;
+    public Troop conflictingTroop;
     public List<Cell> cellPath = new List<Cell>(); //look into redundancy
     public List<Cell> finalCellPath = new List<Cell>(); //localize this
     public List<HexCoordinates> coordPath; //look into redundancy
@@ -47,11 +47,12 @@ public class Troop : MonoBehaviour {
 
     //action move animation logic
     public bool firstPass = true;
-    private int moveCounter = 0;
-    private Vector3 point;
+    private int moveCounter = 1;
+    private Vector3 nextAnimationPos;
     private float newPosPoint; 
     private float transformPoint;
     private bool isAnimating = false;
+    public bool continueAction;
 
     private void OnDrawGizmos() {
         if (color == TroopColor.White)
@@ -112,7 +113,7 @@ public class Troop : MonoBehaviour {
 
     private void AnimateTroops() {
         bool moving = true;
-        if (coordPath.Count > 0 && isAnimating) {
+        if (coordPath.Count > 1 && isAnimating) {
             transformPoint = (transform.position.x * direction.x);
             transform.Translate(direction);
 
@@ -126,10 +127,7 @@ public class Troop : MonoBehaviour {
                     moveCounter++;
                     ActionMove();
                 } else {
-                    moveCounter = 0;
-                    coordPath.Clear();
-                    cellPath.Clear();
-                    vectorPath.Clear();
+                    moveCounter = 1;
                     TroopMoved();//if on review mode, update the path and call again
                 }
             }
@@ -137,25 +135,25 @@ public class Troop : MonoBehaviour {
     }
 
     public void ActionMove() {
-        if (!(coordPath.Count > 0)) {
-            moveCounter = 0;
+        if (!(coordPath.Count > 1)) {
+            moveCounter = 1;
             TroopMoved();
         } else {
-            point = hexCalculator.HexToPosition(coordPath[moveCounter]);
-            direction = (point - transform.position) * Time.deltaTime * coordPath.Count;
-            newPosPoint = (point.x * direction.x);
+            nextAnimationPos = vectorPath[moveCounter];
+            direction = (nextAnimationPos - transform.position) * Time.deltaTime * coordPath.Count;
+            newPosPoint = (nextAnimationPos.x * direction.x);
             isAnimating = true;
         }
     }
 
     private void TroopMoved() { // calls a TroopMoved function in gamemanager which counts all the moved troops and passes when all troops have moved
         isAnimating = false;
-        gameManager.TroopFinishedAnimating();
         if (gameManager.turnNum % 4 == 0) {
             transform.SetParent(hexControls.GetCell(coords).transform);
-            transform.position = newPos;
             gameManager.CheckGameOver();
+            transform.position = newPos;
         } 
+        gameManager.TroopFinishedAnimating();
     }
 
     public void Support(Troop troop) {
@@ -211,12 +209,8 @@ public class Troop : MonoBehaviour {
     public void CheckCutSupport() { //Checks if troop looses its support
         if (!supportingTroop) { return; }
         bool keepSupport = true;
-        if (conflictingTroops.Count > 0 ) {
-            foreach (Troop troop in conflictingTroops) {
-                if (!supportingTroop.conflictingTroops.Contains(troop)) {
-                    keepSupport = false;
-                }
-            }
+        if (conflictingTroop) {
+            keepSupport = supportingTroop.conflictingTroop == conflictingTroop;
             if (!keepSupport)
                 CutSupport();
         }
@@ -234,77 +228,95 @@ public class Troop : MonoBehaviour {
         Debug.Log("Collision");
     }
 
-    public bool ResolveConflicts(int itteration) {
+    public bool ResolveConflicts(int i) { // all troops check the ability to move one space
+        pathAltered = false;
+        if (coordPath.Count - 1 < i)
+            i = coordPath.Count-1;
+        newPos = vectorPath[i];
         bool conflictSolved = false;
         bool pathStopped = false;
-        for (int i = 0; i < cellPath.Count; i++) { // loop through animation path and check for the conflict cells
+        if (cellPath.Count - 1 > i && cellPath.Count > 2 ) {
+            gameManager.continueAction = true;
+            continueAction = true;
+        }
+        //do checks for single value in path
             bool emptySpace = true;
-            if (!pathStopped) {
-
-                for (int x = 0; x < conflictingCells.Count; x++) {
-                    if (cellPath[i] == conflictingCells[x]) {
-                        emptySpace = false;
-                        if (conflictingCells[x] == GetComponentInParent<Cell>()) { // Troop is attacked by enemy and is forced to retreat
-                            if (conflictingTroops[x].actionPower > actionPower && conflictingTroops[x].color != color) {                               
-                                if (GetComponent<HQ>()) { //Handle End Game Condition
-                                    transform.position = hexControls.graveyard.transform.position;
-                                    if (gameManager.gameOver) {
-                                        gameManager.tieBreaker = true;
-                                    } else {
-                                        gameManager.gameOver = true;
-                                        gameManager.winner = conflictingTroops[x].color;
-                                    }
-                                } else {
-                                    conflictSolved = true;
-                                    Cell retreatCell = hexControls.GetRetreatPath(this, conflictingCells[x]);
-                                    if (retreatCell == conflictingCells[x]) { // Troop could not find a cell to retreat to
-                                        transform.position = hexControls.graveyard.transform.position;
-                                        finalCellPath.Add(hexControls.graveyard);
-                                    } else {
-                                        finalCellPath.Add(retreatCell);
-                                    }
-                                }
+        if (!pathStopped && conflictingTroop) {
+            //Debug.Log(cellPath.Count);
+            //if (conflictingCell == null && i < cellPath.Count-1 && i > 0 && cellPath[i] != GetComponentInParent<Cell>()) {
+            //    finalCellPath.Add(cellPath[i]);
+            //}
+            if (cellPath[i] == conflictingCell || cellPath[i] ==  cellPath[cellPath.Count-1]) {
+                emptySpace = false;
+                if (conflictingCell == GetComponentInParent<Cell>()) { // Troop is attacked by enemy and is forced to retreat
+                    pathAltered = true;
+                    if (conflictingTroop.actionPower > actionPower && conflictingTroop.color != color) {
+                        conflictSolved = true;
+                        if (GetComponent<HQ>()) { //Handle End Game Condition
+                            transform.position = hexControls.graveyard.transform.position;
+                            if (gameManager.gameOver) {
+                                gameManager.tieBreaker = true;
+                            } else {
+                                gameManager.gameOver = true;
+                                gameManager.winner = conflictingTroop.color;
                             }
-                        } else if (conflictingTroops[x].actionPower < actionPower && conflictingTroops[x].color != color) { //  Troop attacks enemy troop and moves into the space
-                            if (!finalCellPath.Contains(conflictingCells[x])) { //This is just a temporary hack, look into problem more later (when target is destroyed it loops all the way to the end)
-                                finalCellPath.Add(conflictingCells[x]);
-                                conflictSolved = true;
-                                pathStopped = true;
+                        } else {
+                            conflictSolved = true;
+                            Cell retreatCell = hexControls.GetRetreatPath(this, conflictingCell);
+                            if (retreatCell == conflictingCell) { // Troop could not find a cell to retreat to
+                                transform.position = hexControls.graveyard.transform.position;
+                                finalCellPath.Add(GetComponentInParent<Cell>());
+                                finalCellPath.Add(hexControls.graveyard);
+                            } else {
+                                finalCellPath.Add(GetComponentInParent<Cell>());
+                                finalCellPath.Add(retreatCell);
                             }
-                        } else if (conflictingTroops[x].actionPower >= actionPower) { // Troop is unable to move
-                            pathStopped = true;
-                        } else if (conflictingTroops[x].actionPower < actionPower && conflictingTroops[x].color == color) {
-                            pathStopped = true;
-                        } 
+                        }
                     }
-                }
-
-                if (emptySpace && cellPath.Count > 1 && cellPath[i] != GetComponentInParent<Cell>()) {
-                    conflictSolved = true;
-                    finalCellPath.Add(cellPath[i]);
+                } else if (conflictingTroop.actionPower < actionPower && conflictingTroop.color != color) { //  Troop attacks enemy troop and moves into the space
+                    if (!finalCellPath.Contains(conflictingCell)) { //This is just a temporary hack, look into problem more later (when target is destroyed it loops all the way to the end)
+                        finalCellPath.Add(conflictingCell);
+                        conflictSolved = true;
+                        pathStopped = true;
+                    }
+                } else if (conflictingTroop.actionPower >= actionPower) { // Troop is unable to move
+                    //if (i == 1) { ResolveConflicts(i - 1); }
+                    newPos = vectorPath[i-1];
+                    pathAltered = true;
+                    pathStopped = true;
+                    gameManager.continueAction = false;
+                    continueAction = false;
+                } else if (conflictingTroop.actionPower < actionPower && conflictingTroop.color == color) {
+                    //if (i == 1) { ResolveConflicts(i - 1); }
+                    pathAltered = true;
+                    newPos = vectorPath[i - 1];
+                    pathStopped = true;
+                    gameManager.continueAction = false;
+                    continueAction = false;
                 }
             }
+
+
+            if (emptySpace && cellPath.Count > 1 &&  cellPath[i] != GetComponentInParent<Cell>()) {
+                conflictSolved = true;
+                finalCellPath.Add(cellPath[i]);
+            }
+
         }
-        if (conflictSolved) { //troop successfully moved with conflicts
-            List<Cell> newCell = new List<Cell>();
-            newCell.Add(finalCellPath[finalCellPath.Count - 1]);
-            hexControls.SetPath(this, newCell);
-        }
+
+
+       
         return conflictSolved;
 
     }
+    bool pathAltered = false;
+    public void HandleAction() {
 
-    public void HandleAction() { 
-
-        conflictingCells.Clear();
-        conflictingTroops.Clear();
-
-        hexControls.SetPath(this, finalCellPath);
-        if (finalCellPath.Count > 0) {
-            newPos = finalCellPath[finalCellPath.Count - 1].transform.position;
-        } else {
-            newPos = transform.position;
+        if (pathAltered) {
+            hexControls.SetPath(this, finalCellPath);
         }
+
+        firstPass = true;
         ActionMove();
         finalCellPath.Clear();
         actionPower = basePower;

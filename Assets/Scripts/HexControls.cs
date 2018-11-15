@@ -190,11 +190,10 @@ namespace HexMapTerrain
         }
 
         public void FindPath(Troop troop) { // Keep here because it deals with Cell Pathfinding
-            troop.coordPath.Clear();
             troop.coordPath = pathFinder.FindPath(troop.currentPos, troop.newPos);
-            if (cells[hexCalculator.HexFromPosition(troop.newPos)].GetComponentInChildren<Troop>() && troop != cells[hexCalculator.HexFromPosition(troop.newPos)].GetComponentInChildren<Troop>()) {
-                troop.coordPath.Add(hexCalculator.HexFromPosition(troop.newPos));
-            }
+            //if (cells[hexCalculator.HexFromPosition(troop.newPos)].GetComponentInChildren<Troop>() && troop != cells[hexCalculator.HexFromPosition(troop.newPos)].GetComponentInChildren<Troop>()) {
+            //    troop.coordPath.Add(hexCalculator.HexFromPosition(troop.newPos));
+           // }
             troop.coordPath.Insert(0, hexCalculator.HexFromPosition(troop.currentPos));
 
             foreach (HexCoordinates hexCoord in troop.coordPath) {
@@ -204,28 +203,43 @@ namespace HexMapTerrain
 
         }
 
-        public void FindConflicts(Troop thisTroop, int i) {// pass in cell list instead? //pass in only two cells, the current cell and the next cell
-            if (thisTroop.GetComponentInParent<Cell>() == graveyard) { return; }
-            HexCoordinates currentPos; 
-            HexCoordinates nextPos;
-            nextPos = thisTroop.coordPath[i];
-            currentPos = thisTroop.coordPath[i - 1];
+        public void FindConflicts(Troop thisTroop, int i) {
+            if (i == 1){//Special case of first movements
+                DetectConflicts(thisTroop, 0, 1);
+                Cell conflictingCell1 = thisTroop.conflictingCell;
+                Troop conflictingTroop1 = thisTroop.conflictingTroop;
+                DetectConflicts(thisTroop, 1, 0);
+                Cell conflictingCell2 = thisTroop.conflictingCell;
+                Troop conflictingTroop2 = thisTroop.conflictingTroop;
+                DetectConflicts(thisTroop, 1, 1);
+                Cell conflictingCell3 = thisTroop.conflictingCell;
+                Troop conflictingTroop3 = thisTroop.conflictingTroop;
+
+            } else {
+                DetectConflicts(thisTroop, i, i);
+            }
+            
+        }
+
+        private bool DetectConflicts(Troop thisTroop, int thisItter, int thatItter) {
+            thisTroop.conflictingCell = null;
+            thisTroop.conflictingTroop = null;
+            if (thisTroop.GetComponentInParent<Cell>() == graveyard) { return false; }
+            if (thisTroop.coordPath.Count <= thisItter) { thisItter = thisTroop.coordPath.Count - 1; }
+            HexCoordinates currentPos = hexCalculator.HexFromPosition(thisTroop.vectorPath[thisItter]); 
             foreach (Troop thatTroop in gameManager.troopArray) {
-                HexCoordinates thatCurrentPos;
-                HexCoordinates thatNextPos;
-                thatNextPos = thatTroop.coordPath[i];
-                thatCurrentPos = thatTroop.coordPath[i - 1];
                 if (thisTroop != thatTroop) {
-                    if ((currentPos == thatNextPos)) {
-                        thisTroop.conflictingCells.Add(cells[currentPos]);
-                        thisTroop.conflictingTroops.Add(thatTroop);
+                    if (thatTroop.coordPath.Count <= thatItter) { thatItter = thatTroop.coordPath.Count - 1; }
+                    HexCoordinates thatCurrentPos = hexCalculator.HexFromPosition(thatTroop.vectorPath[thatItter]);
+                    if ((currentPos == thatCurrentPos)) {
+                        thisTroop.conflictingCell = cells[currentPos];
+                        thisTroop.conflictingTroop = thatTroop;
+                        return true;
                     }
-                    if (nextPos == thatNextPos || nextPos == thatCurrentPos) {
-                        thisTroop.conflictingCells.Add(cells[nextPos]);
-                        thisTroop.conflictingTroops.Add(thatTroop);
-                    }
+
                 }
             }
+            return false;
         }
 
         public bool CheckCellConflicts(Cell cell) {
@@ -274,9 +288,9 @@ namespace HexMapTerrain
         }
 
         public void SetPath(Troop troop, List<Cell> path) {
-            troop.coordPath.Clear();
             troop.cellPath.Clear();
             troop.vectorPath.Clear();
+            troop.coordPath.Clear();
             foreach (Cell cell in path) {
                 HexCoordinates hexCoord = hexCalculator.HexFromPosition(cell.transform.position);
                 troop.coordPath.Add(hexCoord);

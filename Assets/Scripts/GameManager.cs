@@ -29,6 +29,8 @@ public class GameManager : MonoBehaviour {
     public bool tieBreaker = false;
     public bool gameOver = false;
     public Text[] PlayerScores = new Text[2];
+    public bool continueAction = false;
+    public int itteration;
 
     // Use this for initialization
     void Start() {
@@ -77,7 +79,8 @@ public class GameManager : MonoBehaviour {
             turnDisplay.Disable();
             seasonDisplay.Disable();
             hexControls.ChangePlayer(TroopColor.White);
-            StartActionPhase();
+            itteration = 1;
+            StartActionPhase(itteration);
 
         } else if (turnNum % 4 == 1) {
             if (roundNum > 0) { reviewButton.Enable(); }
@@ -107,28 +110,60 @@ public class GameManager : MonoBehaviour {
         hexControls.planningMode = true;
     }
 
-    private void StartActionPhase() {
-        bool conflictSolved = false;
+    private void StartActionPhase(int i) {
         foreach (Troop troop in troopArray) {
-            hexControls.FindPath(troop);
+            if (i == 1)
+                hexControls.FindPath(troop);
         }
-        int i = 0;
-        do {
-            conflictSolved = false;
-            foreach (Troop troop in troopArray) {
-                troop.PrepareAction();
-                hexControls.FindConflicts(troop, i);
-            }
-            foreach (Troop troop in troopArray) {
-                conflictSolved = troop.ResolveConflicts(i);
-                troop.conflictingCells.Clear();
-                troop.conflictingTroops.Clear();
-            }
-            i++;
-            if (i == 5) { Debug.LogWarning("Action Turn Looped 5 times"); }
-        } while (conflictSolved && i < 5); 
         foreach (Troop troop in troopArray) {
-            troop.HandleAction();
+            hexControls.FindConflicts(troop, i);
+        }
+        foreach (Troop troop in troopArray) {
+            troop.PrepareAction();
+        }
+        foreach (Troop troop in troopArray) {
+            if (troop.ResolveConflicts(i))
+            troop.conflictingTroop = null;
+        }
+        ActionItterationComplete();
+    }
+
+    public void ActionItterationComplete() {
+        if (continueAction) {
+            continueAction = false;
+            itteration++;
+            if (itteration < 6) {
+                StartActionPhase(itteration);//
+            } else {
+                Debug.LogWarning("Action Phase itterated 6 times");
+                EnableDisplays();
+            }
+        } else {
+            //Animate Troops
+            foreach (Troop troop in troopArray) {
+                troop.HandleAction();
+            }
+        }
+    }
+
+    int numOfTroopsFinished = 0;
+    public void TroopFinishedAnimating() { // troop finished animating action
+        int numOfTroops = troopArray.Length;
+        numOfTroopsFinished++;
+        if (numOfTroopsFinished == numOfTroops) {
+             numOfTroopsFinished =  0;
+            if (turnNum % 4 == 0) {
+                foreach (Troop troop in troopArray) {
+                    troop.coordPath.Clear();
+                    troop.cellPath.Clear();
+                    troop.vectorPath.Clear();
+                }
+                EnableDisplays();
+                CalculatePowerScores();
+            } else if (playBack.fullPlayBack) {
+                seasonSlider.GetComponent<Slider>().value++;
+                playBack.AnimatePlayBack();
+            }
         }
     }
 
@@ -154,22 +189,6 @@ public class GameManager : MonoBehaviour {
                 troop.transform.position = troop.currentPos;
             }
             playBackDisplay.Disable();
-        }
-    }
-
-    int numOfTroopsFinished = 0;
-    public void TroopFinishedAnimating() {
-        int numOfTroops = troopArray.Length;
-        numOfTroopsFinished++;
-        if (numOfTroopsFinished == numOfTroops) {
-            numOfTroopsFinished = 0;
-            if (turnNum % 4 == 0) {
-                EnableDisplays();
-                CalculatePowerScores();
-            } else if (playBack.fullPlayBack) {
-                seasonSlider.GetComponent<Slider>().value++;
-                playBack.AnimatePlayBack();
-            }
         }
     }
 
